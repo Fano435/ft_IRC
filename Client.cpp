@@ -4,9 +4,9 @@
 #include <netinet/in.h>
 #include <stdexcept>
 
-// Client::Client(const int server_sock)
-// {
-// }
+Client::Client(const int sock) :  _socket(sock), _authenticated(false)
+{
+}
 
 Client::Client() : _authenticated(false)
 {
@@ -43,4 +43,19 @@ void Client::setUsername(const std::string &name)
 bool Client::isAuthenticated() const
 {
     return _authenticated;
+}
+
+void Client::authenticate() 
+{
+    _authenticated = true;
+}
+
+bool Client::isRegistered() const
+{
+    return _registered;
+}
+
+void Client::reg() 
+{
+    _registered = true;
 }

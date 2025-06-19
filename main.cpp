@@ -9,8 +9,6 @@
 #include <cstring>
 #include "Server.hpp"
 
-#define BUFFER_SIZE 1024
-
 int main(int ac, char **av)
 {
     if (ac != 3)

@@ -1,7 +1,7 @@
 NAME = ircserver
 CFLAGS = -Wall -Wextra -Werror -std=c++98
 CXX = c++
-SRC = main.cpp Server.cpp Client.cpp
+SRC = main.cpp Server.cpp Client.cpp server_helper.cpp
 OBJ = $(SRC:.cpp=.o)
 
 all: $(NAME)
