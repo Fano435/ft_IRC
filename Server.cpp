@@ -1,5 +1,6 @@
 #include "Server.hpp"
 #include "server.h"
+#include "Command.hpp"
 #include <unistd.h>
 #include <cstdlib>
 #include <cctype>
@@ -38,42 +39,21 @@ Server::Server(const char *s_port, const std::string password) : _password(passw
     epoll_fd = epoll_create1(0);
     if (epoll_fd == -1) 
         throw std::runtime_error("Error: epoll_create1");
-    initReplies();
 
-    _commands["CAP"] = &Server::handleCap;
-    _commands["PASS"] = &Server::handlePass;
-    _commands["NICK"] = &Server::handleNick;
-    _commands["USER"] = &Server::handleUser;
 }
-
-void Server::sendError(Client* client, int code, const std::string& param = "") {
-    std::ostringstream oss;
-    std::string target = client->getNickname().empty() ? "*" : client->getNickname();
-
-    oss << ":" << _server << " "
-        << std::setw(3) << std::setfill('0') << code << " "
-        << target;
-
-    if (!param.empty())
-        oss << " " << param;
-
-    oss << " :" << _errors[code] << "\r\n";
-
-    std::string reply = oss.str();
-    send(client->getSocket(), reply.c_str(), reply.length(), 0);
-}
-
-void Server::sendRWelcome(Client* client)
+std::map<int, Client *> Server::getClients() const
 {
-    std::ostringstream oss;
-    std::string target = client->getNickname().empty() ? "*" : client->getNickname();
+    return _clients;
+}
 
-    oss << ":" << _server << " "
-        << std::setw(3) << std::setfill('0') << RPL_WELCOME << " " << target << " :"
-        << "Welcome to the " << _server << " Network, " << client->getNickname();
-    
-    std::string reply = oss.str();
-    send(client->getSocket(), reply.c_str(), reply.length(), 0);
+const std::string Server::getPassword() const
+{
+    return _password;
+}
+
+int Server::getEpoll() const
+{
+    return epoll_fd;
 }
 
 int Server::createSocket() const
@@ -105,135 +85,10 @@ int Server::createSocket() const
     return server_sock;
 }
 
-void Server::handleNick(Client* client, const std::vector<std::string>& args)
-{
-    if (!client->isAuthenticated())
-        return ;
-    std::string nick = args[0];
-    for (std::map<int, Client *>::iterator it = _clients.begin(); it != _clients.end(); it++)
-    {
-        if ((*it).second->getNickname() == nick)
-        {
-            sendError(client, ERR_NICKNAMEINUSE);
-            return ;
-        }
-    }
-    if(!isValidNickname(nick))
-    {
-        sendError(client, ERR_ERRONEUSNICKNAME);
-        return ;
-    }
-    client->setNickname(nick);
-}
+// void Server::disconnect(Client* client, const std::string& reason)
+// {
 
-void Server::handleCap(Client* client, const std::vector<std::string>& args)
-{
-    (void)client;
-    (void)args;
-}
-
-void Server::handleUser(Client* client, const std::vector<std::string>& args)
-{
-    if (!client->isAuthenticated())
-        return ;
-    if (client->isRegistered())
-    {
-        sendError(client, ERR_ALREADYREGISTRED);
-        return ;
-    }
-    std::string user = args[0];
-    if (user.empty())
-    {
-        sendError(client, ERR_NEEDMOREPARAMS);
-        return ;
-    }
-    client->setUsername(args[0]);
-    client->reg();
-    sendRWelcome(client);
-}
-
-void Server::handlePass(Client* client, const std::vector<std::string>& args)
-{
-    if (client->isAuthenticated())
-        return ;
-    if (client->isRegistered())
-    {
-        sendError(client, ERR_ALREADYREGISTRED);
-    }
-    if (args.back() != _password)
-    {
-        sendError(client, ERR_PASSWDMISMATCH);
-        return ;
-    }
-    client->authenticate();
-    return ;
-}
-
-void Server::disconnect(Client* client, const std::string& reason)
-{
-
-}
-
-void Server::parseLine(Client *client, const std::string &line)
-{
-    (void)client;
-    std::istringstream stream(line);
-    std::string cmd, token;
-    std::vector<std::string> args;
-
-    stream >> cmd;
-    std::cout << "Command: " << cmd << std::endl;
-    while (stream >> token)
-    {
-        if (token[0] == ':')
-        {
-            std::string trailingArg = token.substr(1);
-            std::string rest;
-            std::getline(stream, rest);
-            trailingArg += rest;
-            args.push_back(trailingArg);
-            break;            
-        }
-        args.push_back(token);
-    }
-
-    if (args.empty())
-    {
-        sendError(client, ERR_NEEDMOREPARAMS);
-        return ;
-    }
-
-    for(size_t  i = 0; i < args.size(); i++)
-    {
-        std::cout << args[i] << std::endl;
-    }
-
-    std::map<std::string, CommandHandler>::iterator it = _commands.find(cmd);
-
-    if (it != _commands.end())
-    {
-        CommandHandler handler = it->second;
-        (this->*handler)(client, args);
-        if (!client->isAuthenticated())
-        {
-            epoll_ctl(epoll_fd)
-            close(client->getSocket());
-            _clients.erase(client->getSocket());
-            // delete _clients[client->getSocket()];
-        }
-    }
-    else
-    {
-        sendError(client, ERR_UNKNOWNCOMMAND);
-        // std::string msg = ":ircserver " + cmd + " * 421 :Unknown command\r\n";
-        // std::string msg = ":ircserver 421 * :Unknown command\r\n";
-        // std::cout << msg << std::endl;
-        // send(client->getSocket(), msg.c_str(), msg.size(), 0);
-
-        // send(client->getSocket(), "Unkown command", 15, 0);
-        // sendError();
-    }
-}
+// }
 
 void Server::parseMsg(int sender_sock)
 {
@@ -255,7 +110,7 @@ void Server::parseMsg(int sender_sock)
         {
             std::string line = recvBuffer.substr(0, pos);
             recvBuffer.erase(0, pos + 2);
-            parseLine(_clients[sender_sock], line);
+            _command->execute(_clients[sender_sock], line);
         }
         // std::cout << buffer << std::endl;
     }
@@ -263,6 +118,7 @@ void Server::parseMsg(int sender_sock)
 
 void Server::run()
 {
+    _command = new Command(*this);
     struct sockaddr_in client_addr;
     socklen_t client_addr_len = sizeof(client_addr);
     struct epoll_event ev, events[MAX_EVENTS];
@@ -294,7 +150,6 @@ void Server::run()
             }
             else
             {
-                /*Ce n'est pas une nouvelle connexion donc il s'agit de gerer un socket existant (lire/ecrire)*/
                 parseMsg(events[n].data.fd);
             }
         }

@@ -1,5 +1,10 @@
-#ifndef ERROR_H
-#define ERROR_H
+#ifndef ERRORS_HPP
+#define ERRORS_HPP
+
+#include <map>
+#include <iostream>
+
+extern std::map<int, std::string> errors;
 
 #define RPL_WELCOME           001
 #define RPL_YOURHOST          002
