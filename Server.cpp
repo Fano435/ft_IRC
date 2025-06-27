@@ -23,7 +23,7 @@ Server::~Server()
     }
 }
 
-Server::Server(const char *s_port, const std::string password) : _password(password), _server("ircserver")
+Server::Server(const char *s_port, const std::string password) : _password(password), _server(SERVER)
 {
     int i = 0;
     while (s_port[i])
@@ -41,7 +41,7 @@ Server::Server(const char *s_port, const std::string password) : _password(passw
         throw std::runtime_error("Error: epoll_create1");
 
 }
-std::map<int, Client *> Server::getClients() const
+std::map<int, Client *> &Server::getClients()
 {
     return _clients;
 }
@@ -51,10 +51,6 @@ const std::string Server::getPassword() const
     return _password;
 }
 
-int Server::getEpoll() const
-{
-    return epoll_fd;
-}
 
 int Server::createSocket() const
 {
@@ -85,22 +81,17 @@ int Server::createSocket() const
     return server_sock;
 }
 
-// void Server::disconnect(Client* client, const std::string& reason)
-// {
-
-// }
-
 void Server::parseMsg(int sender_sock)
 {
     char buffer[BUFFER_SIZE];
     memset(&buffer, '\0', sizeof buffer);
     int bytes_read = recv(sender_sock, buffer, BUFFER_SIZE, 0);
-    if ( bytes_read <= 0)
+    if (bytes_read <= 0)
     {
         if (bytes_read == -1)
             throw std::runtime_error("[Server] Error: recv");
         std::cout << "Client socket " << sender_sock << " closed" << std::endl;
-        close(sender_sock);
+        disconnect(_clients[sender_sock], "");
     }
     else
     {
@@ -112,7 +103,7 @@ void Server::parseMsg(int sender_sock)
             recvBuffer.erase(0, pos + 2);
             _command->execute(_clients[sender_sock], line);
         }
-        // std::cout << buffer << std::endl;
+        std::cout << buffer << std::endl;
     }
 }
 
@@ -146,12 +137,39 @@ void Server::run()
                 ev.data.fd = client_sock;
                 if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, client_sock, &ev) == -1 )
                     throw std::runtime_error("Error: epoll_ctl: client_sock");
-                _clients[client_sock] = new Client(client_sock);
+                _clients[client_sock] = new Client(client_sock, client_addr, client_addr_len);
             }
             else
             {
+                std::cout << "Clients before: " << getClients().size() << std::endl;
                 parseMsg(events[n].data.fd);
+                std::cout << "Clients after: " << getClients().size() << std::endl;
             }
         }
+    }
+}
+
+void Server::disconnect(Client* client, const std::string& reason)
+{
+    // std::string msg = "ERROR :" + reason + "\r\n";
+    // send(client->getSocket(), msg.c_str(), msg.length(), 0);
+        
+    // epoll_ctl(_server.getEpoll(), EPOLL_CTL_DEL, client->getSocket(), 0);
+    // close(client->getSocket());
+    // _server.getClients().erase(client->getSocket());
+
+    if(!reason.empty())
+    {
+        std::string msg = "ERROR :" + reason + "\r\n";
+        send(client->getSocket(), msg.c_str(), msg.length(), 0);
+    }
+
+    epoll_ctl(epoll_fd, EPOLL_CTL_DEL, client->getSocket(), 0);
+    close(client->getSocket());
+
+    std::map<int, Client*>::iterator it = _clients.find(client->getSocket());
+    if (it != _clients.end()) {
+        delete it->second;
+        _clients.erase(it);
     }
 }

@@ -11,8 +11,9 @@ class Command;
 
 #define MAX_EVENTS 10
 #define MAX_PORT 65535
+
 #define BUFFER_SIZE 512
-#define SERVER "ircserver"
+#define SERVER "localhost"
 
 class Server
 {
@@ -32,15 +33,14 @@ private:
     void parseMsg(int sender_sock);
     void parseLine(Client *client, const std::string &line);
     int  createSocket() const;
-    void disconnect(Client* client, const std::string& reason);
-
+    
 public:
+    void disconnect(Client* client, const std::string& reason);
     Server(const char *s_port, const std::string password);
     ~Server();
     void run();
-    std::map<int, Client *> getClients() const;
+    std::map<int, Client *> &getClients();
     const std::string getPassword() const;
-    int getEpoll() const;
 };
 
 

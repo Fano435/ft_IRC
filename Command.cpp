@@ -8,11 +8,13 @@
 
 Command::Command(Server &server) : _server(server)
 {
-    _commands["CAP"] = &Command::handleCap;
+    _commands["CAP"] = &Command::cap;
     _commands["PASS"] = &Command::handlePass;
     _commands["NICK"] = &Command::handleNick;
     _commands["USER"] = &Command::handleUser;
-
+    _commands["QUIT"] = &Command::quit;
+    _commands["PING"] = &Command::ping;
+    _commands["PRIVMSG"] = &Command::message;
 }
 
 Command::~Command()
@@ -49,17 +51,61 @@ bool isValidNickname(const std::string& nick) {
     return true;
 }
 
+void Command::message(Client* client, const std::vector<std::string>& args)
+{
+    std::string target = args[0];
+    std::string msg = args[1];
+
+    if (args.empty())
+    {
+        sendError(client, ERR_NORECIPIENT);
+        return ;
+    }
+    std::string message = ":" + client->getNickname() + "!" + client->getUsername()
+    + "@" + client->getHost() + " PRIVMSG " + target + " :" + msg + "\r\n";
+    for (std::map<int, Client *>::iterator it = _server.getClients().begin(); it != _server.getClients().end(); it++)
+    {
+        if ((*it).second->getNickname() == target)
+        {
+            // std::cout << "sender fd: " << client->getSocket() << std::endl;
+            // std::cout << "receiver fd: " << (*it).first << std::endl;
+            send((*it).first, message.c_str(), message.length(), 0);
+            return ;
+        }
+    }
+}
+
+void Command::quit(Client* client, const std::vector<std::string>& args)
+{
+    std::string reason = args[0];
+    _server.disconnect(client, reason);
+}
+
+void Command::ping(Client* client, const std::vector<std::string>& args) 
+{
+    if (args.empty()) {
+        sendError(client, ERR_NOORIGIN);
+        return;
+    }
+
+    std::string reply = "PONG :" + args[0] + "\r\n";
+    std::cout << args[0] << std::endl;
+    send(client->getSocket(), reply.c_str(), reply.size(), 0);
+}
+
 void Command::handleNick(Client* client, const std::vector<std::string>& args)
 {
     if (!client->isAuthenticated())
         return ;
     std::string nick = args[0];
-    std::map<int, Client *> clients = _server.getClients();
-    for (std::map<int, Client *>::iterator it = clients.begin(); it != clients.end(); it++)
+    // std::map<int, Client *> clients = _server.getClients();
+    for (std::map<int, Client *>::iterator it = _server.getClients().begin(); it != _server.getClients().end(); it++)
     {
         if ((*it).second->getNickname() == nick)
         {
-            sendError(client, ERR_NICKNAMEINUSE);
+            sendError(client, ERR_NICKNAMEINUSE, nick);
+            // if ((*it).second->getSocket() != client->getSocket())
+            //     _server.disconnect(client, "");
             return ;
         }
     }
@@ -71,7 +117,7 @@ void Command::handleNick(Client* client, const std::vector<std::string>& args)
     client->setNickname(nick);
 }
 
-void Command::handleCap(Client* client, const std::vector<std::string>& args)
+void Command::cap(Client* client, const std::vector<std::string>& args)
 {
     (void)client;
     (void)args;
@@ -80,10 +126,14 @@ void Command::handleCap(Client* client, const std::vector<std::string>& args)
 void Command::handleUser(Client* client, const std::vector<std::string>& args)
 {
     if (!client->isAuthenticated())
+    {
+        _server.disconnect(client, "Authentication failed");
         return ;
+    }
     if (client->isRegistered())
     {
         sendError(client, ERR_ALREADYREGISTRED);
+        _server.disconnect(client, "");
         return ;
     }
     std::string user = args[0];
@@ -104,6 +154,8 @@ void Command::handlePass(Client* client, const std::vector<std::string>& args)
     if (client->isRegistered())
     {
         sendError(client, ERR_ALREADYREGISTRED);
+        _server.disconnect(client, "");
+        return ;
     }
     if (args.back() != _server.getPassword())
     {
@@ -120,8 +172,10 @@ void Command::execute(Client *client, const std::string &line)
     std::string cmd, token;
     std::vector<std::string> args;
 
+    if (!client)
+        return ;
     stream >> cmd;
-    std::cout << "Command: " << cmd << std::endl;
+    // std::cout << "Command: " << cmd << std::endl;
     while (stream >> token)
     {
         if (token[0] == ':')
@@ -142,10 +196,10 @@ void Command::execute(Client *client, const std::string &line)
         return ;
     }
 
-    for(size_t  i = 0; i < args.size(); i++)
-    {
-        std::cout << args[i] << std::endl;
-    }
+    // for(size_t  i = 0; i < args.size(); i++)
+    // {
+    //     std::cout << args[i] << std::endl;
+    // }
 
     std::map<std::string, CommandHandler>::iterator it = _commands.find(cmd);
 
@@ -153,22 +207,10 @@ void Command::execute(Client *client, const std::string &line)
     {
         CommandHandler handler = it->second;
         (this->*handler)(client, args);
-        if (!client->isAuthenticated())
-        {
-            epoll_ctl(_server.getEpoll(), EPOLL_CTL_DEL, client->getSocket(), 0);
-            close(client->getSocket());
-            _server.getClients().erase(client->getSocket());
-        }
     }
     else
     {
         sendError(client, ERR_UNKNOWNCOMMAND);
-        // std::string msg = ":ircserver " + cmd + " * 421 :Unknown command\r\n";
-        // std::string msg = ":ircserver 421 * :Unknown command\r\n";
-        // std::cout << msg << std::endl;
-        // send(client->getSocket(), msg.c_str(), msg.size(), 0);
-
-        // send(client->getSocket(), "Unkown command", 15, 0);
-        // sendError();
     }
 }
+
