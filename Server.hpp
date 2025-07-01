@@ -8,12 +8,14 @@
 #include "errors.hpp"
 
 class Command;
+class Channel;
+
 
 #define MAX_EVENTS 10
 #define MAX_PORT 65535
 
 #define BUFFER_SIZE 512
-#define SERVER "localhost"
+#define SERVER "127.0.0.1"
 
 class Server
 {
@@ -29,13 +31,17 @@ private:
 
     Command *_command;
     std::map<int, Client *> _clients;
+    std::map<std::string, Channel *> _channels;
 
     void parseMsg(int sender_sock);
-    void parseLine(Client *client, const std::string &line);
     int  createSocket() const;
     
 public:
     void disconnect(Client* client, const std::string& reason);
+    void addToChannel(Client *client, std::string name);
+    void messageChannel(Client *client, std::string name, const std::string &msg);
+    void removeFromChannel(Client *client, std::string name, const std::string &msg);
+    void reply(Client *receiver, const std::string& reply);
     Server(const char *s_port, const std::string password);
     ~Server();
     void run();

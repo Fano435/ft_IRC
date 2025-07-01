@@ -20,9 +20,13 @@ void initErrors()
     errors[ERR_ALREADYREGISTRED] = "You may not reregister";
     errors[ERR_NOORIGIN] = "No origin specified";
     errors[ERR_NORECIPIENT] = "No recipient given";
+    errors[ERR_NOSUCHNICK] = "No such nick/channel";
+    errors[ERR_NOSUCHCHANNEL] = "No such channel";
+    errors[ERR_NOTEXTTOSEND] = "No text to send";
+    errors[ERR_NOTONCHANNEL] = "You're not on that channel";
 }
 
-void sendError(Client* client, int code, const std::string& param = "") 
+void sendError(Client* client, int code, const std::string& param) 
 {
     std::ostringstream oss;
     std::string target = client->getNickname().empty() ? "*" : client->getNickname();
@@ -40,18 +44,12 @@ void sendError(Client* client, int code, const std::string& param = "")
     send(client->getSocket(), reply.c_str(), reply.length(), 0);
 }
 
-void sendRWelcome(Client* client)
-{
+void sendNumeric(Client* client, int code, const std::string& command) {
     std::ostringstream oss;
-    std::string target = client->getNickname().empty() ? "*" : client->getNickname();
-
     oss << ":" << SERVER << " "
-        << std::setw(3) << std::setfill('0') << RPL_WELCOME << " " << target << " :"
-        << "Welcome to the Internet Relay Network " << client->getNickname() << "!"
-        << client->getUsername() << "@" << client->getHost() << "\r\n";
-    
-    std::string reply = oss.str() ;
-    send(client->getSocket(), reply.c_str(), reply.length(), 0);
+        << std::setw(3) << std::setfill('0') << code << " "
+        << client->getNickname() << " :No recipient given (" << command << ")\r\n";
+
+    std::string msg = oss.str();
+    send(client->getSocket(), msg.c_str(), msg.length(), 0);
 }
-
-

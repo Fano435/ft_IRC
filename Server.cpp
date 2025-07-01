@@ -141,9 +141,9 @@ void Server::run()
             }
             else
             {
-                std::cout << "Clients before: " << getClients().size() << std::endl;
+                // std::cout << "Clients before: " << getClients().size() << std::endl;
                 parseMsg(events[n].data.fd);
-                std::cout << "Clients after: " << getClients().size() << std::endl;
+                // std::cout << "Clients after: " << getClients().size() << std::endl;
             }
         }
     }
@@ -151,13 +151,6 @@ void Server::run()
 
 void Server::disconnect(Client* client, const std::string& reason)
 {
-    // std::string msg = "ERROR :" + reason + "\r\n";
-    // send(client->getSocket(), msg.c_str(), msg.length(), 0);
-        
-    // epoll_ctl(_server.getEpoll(), EPOLL_CTL_DEL, client->getSocket(), 0);
-    // close(client->getSocket());
-    // _server.getClients().erase(client->getSocket());
-
     if(!reason.empty())
     {
         std::string msg = "ERROR :" + reason + "\r\n";
@@ -172,4 +165,48 @@ void Server::disconnect(Client* client, const std::string& reason)
         delete it->second;
         _clients.erase(it);
     }
+}
+
+void Server::reply(Client *receiver, const std::string& reply)
+{
+    std::ostringstream oss;
+    // std::string target = receiver->getNickname().empty() ? "*" : receiver->getNickname();
+    oss << ":" << SERVER << " " << reply << "\r\n";
+
+    std::string msg = oss.str();
+    send(receiver->getSocket(), msg.c_str(), msg.length(), 0);
+}
+
+void Server::addToChannel(Client *client, std::string name)
+{
+    if (_channels.find(name) != _channels.end())
+        _channels[name]->addClient(client, name);
+    else
+        _channels[name] = new Channel(client, name);
+    reply(client, RPL_TOPIC(client->getNickname(), name, _channels[name]->getTopic()));
+    reply(client, RPL_NAMREPLY(client->getNickname(), "=", name) + _channels[name]->listUsers());
+    reply(client, RPL_ENDOFNAMES(client->getNickname(), name));
+}
+
+void Server::removeFromChannel(Client *client, std::string name, const std::string &msg)
+{
+    if (_channels.find(name) == _channels.end())
+    {
+        sendError(client, ERR_NOSUCHCHANNEL, name);
+        return ;
+    }
+    std::string message = "PART " + name + " :" + msg;
+    _channels[name]->broadcast(client, message);
+    _channels[name]->removeClient(client);
+}
+
+void Server::messageChannel(Client *client, std::string name, const std::string &msg)
+{
+    if (_channels.find(name) == _channels.end())
+    {
+        sendError(client, ERR_NOSUCHCHANNEL, name);
+        return ;
+    }
+    std::string message = "PRIVMSG " + name + " :" + msg;
+    _channels[name]->broadcast(client, message);
 }
