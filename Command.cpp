@@ -15,6 +15,8 @@ Command::Command(Server &server) : _server(server)
     _commands["QUIT"] = &Command::quit;
     _commands["PING"] = &Command::ping;
     _commands["PRIVMSG"] = &Command::message;
+    _commands["JOIN"] = &Command::join;
+    _commands["PART"] = &Command::leave;
 }
 
 Command::~Command()
@@ -51,6 +53,19 @@ bool isValidNickname(const std::string& nick) {
     return true;
 }
 
+void Command::leave(Client* client, const std::vector<std::string>& args)
+{
+    _server.removeFromChannel(client, args[0], args[1]);
+}
+
+void Command::join(Client* client, const std::vector<std::string>& args)
+{
+    std::string channel_name = args[0];
+    if (channel_name[0] != '#')
+        return ;
+    _server.addToChannel(client, channel_name);
+}
+
 void Command::message(Client* client, const std::vector<std::string>& args)
 {
     std::string target = args[0];
@@ -58,21 +73,30 @@ void Command::message(Client* client, const std::vector<std::string>& args)
 
     if (args.empty())
     {
-        sendError(client, ERR_NORECIPIENT);
+        sendNumeric(client, ERR_NORECIPIENT, "PRIVMSG");
         return ;
     }
-    std::string message = ":" + client->getNickname() + "!" + client->getUsername()
-    + "@" + client->getHost() + " PRIVMSG " + target + " :" + msg + "\r\n";
+    if (msg.empty())
+    {
+        sendError(client, ERR_NOTEXTTOSEND);
+        return ;
+    }
+    if (target[0] == '#')
+    {
+        _server.messageChannel(client, target, msg);
+        return ;
+        //Message chanel
+    }
+    std::string message = client->getPrefix() + " PRIVMSG " + target + " :" + msg + "\r\n";
     for (std::map<int, Client *>::iterator it = _server.getClients().begin(); it != _server.getClients().end(); it++)
     {
         if ((*it).second->getNickname() == target)
         {
-            // std::cout << "sender fd: " << client->getSocket() << std::endl;
-            // std::cout << "receiver fd: " << (*it).first << std::endl;
             send((*it).first, message.c_str(), message.length(), 0);
             return ;
         }
     }
+    sendError(client, ERR_NOSUCHNICK, target);
 }
 
 void Command::quit(Client* client, const std::vector<std::string>& args)
@@ -104,8 +128,6 @@ void Command::handleNick(Client* client, const std::vector<std::string>& args)
         if ((*it).second->getNickname() == nick)
         {
             sendError(client, ERR_NICKNAMEINUSE, nick);
-            // if ((*it).second->getSocket() != client->getSocket())
-            //     _server.disconnect(client, "");
             return ;
         }
     }
@@ -143,8 +165,7 @@ void Command::handleUser(Client* client, const std::vector<std::string>& args)
         return ;
     }
     client->setUsername(args[0]);
-    client->reg();
-    sendRWelcome(client);
+    client->welcome();
 }
 
 void Command::handlePass(Client* client, const std::vector<std::string>& args)

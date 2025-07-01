@@ -6,46 +6,6 @@
 
 extern std::map<int, std::string> errors;
 
-#define RPL_WELCOME           001
-#define RPL_YOURHOST          002
-#define RPL_CREATED           003
-#define RPL_MYINFO            004
-#define RPL_BOUNCE            005  // Optional (aka RPL_ISUPPORT)
-
-// #define RPL_USERHOST          302
-// #define RPL_ISON              303
-// #define RPL_AWAY              301
-// #define RPL_UNAWAY            305
-// #define RPL_NOWAWAY           306
-// #define RPL_WHOISUSER         311
-// #define RPL_WHOISSERVER       312
-// #define RPL_WHOISOPERATOR     313
-// #define RPL_WHOISIDLE         317
-// #define RPL_ENDOFWHOIS        318
-// #define RPL_WHOISCHANNELS     319
-// #define RPL_WHOWASUSER        314
-// #define RPL_ENDOFWHOWAS       369
-// #define RPL_LISTSTART         321
-// #define RPL_LIST              322
-// #define RPL_LISTEND           323
-// #define RPL_CHANNELMODEIS     324
-// #define RPL_NOTOPIC           331
-// #define RPL_TOPIC             332
-// #define RPL_TOPICWHOTIME      333  // Optional (from RFC 2812)
-// #define RPL_INVITING          341
-// #define RPL_NAMREPLY          353
-// #define RPL_ENDOFNAMES        366
-// #define RPL_MOTD              372
-// #define RPL_MOTDSTART         375
-// #define RPL_ENDOFMOTD         376
-// #define RPL_YOUREOPER         381
-// #define RPL_REHASHING         382
-// #define RPL_TIME              391
-// #define RPL_USERSSTART        392
-// #define RPL_USERS             393
-// #define RPL_ENDOFUSERS        394
-// #define RPL_NOUSERS           395
-
 #define ERR_NOSUCHNICK        401
 #define ERR_NOSUCHSERVER      402
 #define ERR_NOSUCHCHANNEL     403
@@ -84,7 +44,6 @@ extern std::map<int, std::string> errors;
 // #define ERR_BADCHANNELKEY     475
 // #define ERR_NOPRIVILEGES      481
 // #define ERR_CHANOPRIVSNEEDED  482
-// #define ERR_UMODEUNKNOWNFLAG  501
-// #define ERR_USERSDONTMATCH    502
+
 
 #endif

@@ -1,11 +1,10 @@
 #ifndef COMMAND_HPP
 #define COMMAND_HPP
 
-#pragma once
-
 #include <map>
 #include <vector>
 #include <iostream>
+
 class Server;
 class Client;
 
@@ -13,9 +12,8 @@ class Command
 {
     typedef void (Command::*CommandHandler)(Client*, const std::vector<std::string>&);
 private:
-    Command();
-    Command &operator=(const Command &rhs);
     Server &_server;
+    Command();
     std::map<std::string, CommandHandler> _commands;
     void cap(Client* client, const std::vector<std::string>& args);
     void handleNick(Client* client, const std::vector<std::string>& args);
@@ -24,6 +22,8 @@ private:
     void quit(Client* client, const std::vector<std::string>& args);
     void ping(Client* client, const std::vector<std::string>& args);
     void message(Client* client, const std::vector<std::string>& args);
+    void join(Client* client, const std::vector<std::string>& args);
+    void leave(Client* client, const std::vector<std::string>& args);
     void disconnect(Client *client, const std::string& reason);
 
 public:

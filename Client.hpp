@@ -11,27 +11,29 @@ private:
     std::string _username;
     std::string _nickname;
     std::string _realname;
-    std::string _host;
+    std::string _hostname;
 
     bool _authenticated;
     bool _registered;
+    int createSocket(const int server_sock) const;
 
 public:
     Client();
     Client(const int sock, struct sockaddr_in &addr, socklen_t addr_len);
     ~Client();
     int getSocket() const;
-    int createSocket(const int server_sock) const;
     void setNickname(const std::string &name);
     std::string getNickname() const;
     std::string getUsername() const;
     std::string getHost() const;
+    std::string getPrefix() const;
     void setUsername(const std::string &name);
     bool isAuthenticated() const;
     void authenticate();
-    void reg();
+    void welcome();
     bool isRegistered() const;
-    void run();
+    void write(const std::string& message);
+    void reply(const std::string& reply);
 };
 
 
