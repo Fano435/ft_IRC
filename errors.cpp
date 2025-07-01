@@ -21,7 +21,9 @@ void initErrors()
     errors[ERR_NOORIGIN] = "No origin specified";
     errors[ERR_NORECIPIENT] = "No recipient given";
     errors[ERR_NOSUCHNICK] = "No such nick/channel";
+    errors[ERR_NOSUCHCHANNEL] = "No such channel";
     errors[ERR_NOTEXTTOSEND] = "No text to send";
+    errors[ERR_NOTONCHANNEL] = "You're not on that channel";
 }
 
 void sendError(Client* client, int code, const std::string& param) 

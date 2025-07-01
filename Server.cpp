@@ -192,19 +192,19 @@ void Server::removeFromChannel(Client *client, std::string name, const std::stri
 {
     if (_channels.find(name) == _channels.end())
     {
-        sendError(client, ERR_NOSUCHNICK, name);
+        sendError(client, ERR_NOSUCHCHANNEL, name);
         return ;
     }
     std::string message = "PART " + name + " :" + msg;
     _channels[name]->broadcast(client, message);
-    _channels[name]->removeClient(client, name);
+    _channels[name]->removeClient(client);
 }
 
 void Server::messageChannel(Client *client, std::string name, const std::string &msg)
 {
     if (_channels.find(name) == _channels.end())
     {
-        sendError(client, ERR_NOSUCHNICK, name);
+        sendError(client, ERR_NOSUCHCHANNEL, name);
         return ;
     }
     std::string message = "PRIVMSG " + name + " :" + msg;

@@ -27,7 +27,7 @@ extern std::map<int, std::string> errors;
 #define ERR_NICKNAMEINUSE     433
 // #define ERR_NICKCOLLISION     436
 // #define ERR_USERNOTINCHANNEL  441
-// #define ERR_NOTONCHANNEL      442
+#define ERR_NOTONCHANNEL      442
 // #define ERR_USERONCHANNEL     443
 // #define ERR_NOLOGIN           444
 // #define ERR_SUMMONDISABLED    445

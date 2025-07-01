@@ -55,7 +55,18 @@ bool isValidNickname(const std::string& nick) {
 
 void Command::leave(Client* client, const std::vector<std::string>& args)
 {
-    _server.removeFromChannel(client, args[0], args[1]);
+    if (args.empty())
+    {
+        sendError(client, ERR_NEEDMOREPARAMS, "PART");
+        return ;
+    }
+    std::string channel = args[0];
+    if (args.size() < 2)
+    {
+        _server.removeFromChannel(client, channel, "");
+    }
+    else
+        _server.removeFromChannel(client, channel, args[1]);
 }
 
 void Command::join(Client* client, const std::vector<std::string>& args)
@@ -85,7 +96,6 @@ void Command::message(Client* client, const std::vector<std::string>& args)
     {
         _server.messageChannel(client, target, msg);
         return ;
-        //Message chanel
     }
     std::string message = client->getPrefix() + " PRIVMSG " + target + " :" + msg + "\r\n";
     for (std::map<int, Client *>::iterator it = _server.getClients().begin(); it != _server.getClients().end(); it++)

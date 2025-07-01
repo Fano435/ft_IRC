@@ -15,13 +15,12 @@ void Channel::addClient(Client* client, std::string name)
     broadcast(client, "JOIN " + name);
 }
 
-void Channel::removeClient(Client* client, std::string name )
+void Channel::removeClient(Client* client)
 {
-    (void)name;
-    for (std::map<int, Client *>::iterator it = _clients.begin(); it != _clients.end(); it++)
+    std::map<int, Client*>::iterator it = _clients.find(client->getSocket());
+    if (it != _clients.end())
     {
-        if (it->second == client)
-            _clients.erase(it);
+        _clients.erase(it);
     }
 }
 
@@ -44,6 +43,11 @@ std::string Channel::listUsers()
 
 void Channel::broadcast(Client* client, const std::string &message)
 {
+    if (_clients.find(client->getSocket()) == _clients.end())
+    {
+        sendError(client, ERR_NOTONCHANNEL, _name);
+        return ;
+    }
     for (std::map<int, Client *>::iterator it = _clients.begin(); it != _clients.end(); it++)
     {
         if (it->second != client)
