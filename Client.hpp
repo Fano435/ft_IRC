@@ -17,6 +17,8 @@ private:
     bool _registered;
     int createSocket(const int server_sock) const;
 
+    std::string _buffer;
+
 public:
     Client();
     Client(const int sock, struct sockaddr_in &addr, socklen_t addr_len);
@@ -24,9 +26,9 @@ public:
     int getSocket() const;
     void setNickname(const std::string &name);
     std::string getNickname() const;
-    std::string getUsername() const;
-    std::string getHost() const;
     std::string getPrefix() const;
+    void append_buf(const std::string& buffer);
+    std::string &getBuffer();
     void setUsername(const std::string &name);
     bool isAuthenticated() const;
     void authenticate();

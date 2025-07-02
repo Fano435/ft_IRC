@@ -8,8 +8,8 @@ class Channel
     public:
         Channel(Client* admin, const std::string name);
         void addClient(Client* client, std::string name );
-        void removeClient(Client* client);
-        void broadcast(Client* client, const std::string &message);
+        void removeClient(Client* client, const std::string &msg);
+        void broadcast(Client* client, const std::string &message, int exclude_fd = -1 );
         std::string listUsers();
         void setTopic(const std::string topic);
         std::string getTopic() const;

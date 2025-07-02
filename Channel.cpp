@@ -3,7 +3,6 @@
 Channel::Channel(Client* admin, const std::string name) : _admin(admin), _name(name)
 {
     (void)_l;
-    setTopic("Sujet test");
     addClient(admin, name);
 }
 
@@ -15,11 +14,15 @@ void Channel::addClient(Client* client, std::string name)
     broadcast(client, "JOIN " + name);
 }
 
-void Channel::removeClient(Client* client)
+void Channel::removeClient(Client* client, const std::string &msg)
 {
     std::map<int, Client*>::iterator it = _clients.find(client->getSocket());
     if (it != _clients.end())
     {
+        std::string message = "PART " + _name;
+        if (!msg.empty())
+            message += " :" + msg;
+        broadcast(client, message);
         _clients.erase(it);
     }
 }
@@ -41,7 +44,7 @@ std::string Channel::listUsers()
     return list;
 }
 
-void Channel::broadcast(Client* client, const std::string &message)
+void Channel::broadcast(Client* client, const std::string &message, int exclude_fd)
 {
     if (_clients.find(client->getSocket()) == _clients.end())
     {
@@ -50,7 +53,7 @@ void Channel::broadcast(Client* client, const std::string &message)
     }
     for (std::map<int, Client *>::iterator it = _clients.begin(); it != _clients.end(); it++)
     {
-        if (it->second != client)
+        if (it->first != exclude_fd)
             it->second->write(client->getPrefix() + " " + message);
     }
 }

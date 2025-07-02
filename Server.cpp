@@ -83,6 +83,7 @@ int Server::createSocket() const
 
 void Server::parseMsg(int sender_sock)
 {
+    Client *client = _clients[sender_sock];
     char buffer[BUFFER_SIZE];
     memset(&buffer, '\0', sizeof buffer);
     int bytes_read = recv(sender_sock, buffer, BUFFER_SIZE, 0);
@@ -91,19 +92,21 @@ void Server::parseMsg(int sender_sock)
         if (bytes_read == -1)
             throw std::runtime_error("[Server] Error: recv");
         std::cout << "Client socket " << sender_sock << " closed" << std::endl;
-        disconnect(_clients[sender_sock], "");
+        disconnect(client, "");
     }
     else
     {
-        std::string recvBuffer = buffer;
+        client->append_buf(buffer);
+        std::string& buf = client->getBuffer();
         size_t pos = 0;
-        while ((pos = recvBuffer.find("\r\n")) != std::string::npos)
+        while ((pos = buf.find("\r\n")) != std::string::npos)
         {
-            std::string line = recvBuffer.substr(0, pos);
-            recvBuffer.erase(0, pos + 2);
-            _command->execute(_clients[sender_sock], line);
+            std::string line = buf.substr(0, pos);
+            std::cout << line << std::endl;
+            buf.erase(0, pos + 2);
+            _command->execute(client, line);
         }
-        std::cout << buffer << std::endl;
+        // std::cout << buffer << std::endl;
     }
 }
 
@@ -170,7 +173,6 @@ void Server::disconnect(Client* client, const std::string& reason)
 void Server::reply(Client *receiver, const std::string& reply)
 {
     std::ostringstream oss;
-    // std::string target = receiver->getNickname().empty() ? "*" : receiver->getNickname();
     oss << ":" << SERVER << " " << reply << "\r\n";
 
     std::string msg = oss.str();
@@ -183,8 +185,10 @@ void Server::addToChannel(Client *client, std::string name)
         _channels[name]->addClient(client, name);
     else
         _channels[name] = new Channel(client, name);
-    reply(client, RPL_TOPIC(client->getNickname(), name, _channels[name]->getTopic()));
-    reply(client, RPL_NAMREPLY(client->getNickname(), "=", name) + _channels[name]->listUsers());
+    Channel *chan = _channels[name];
+    if (!chan->getTopic().empty())
+        reply(client, RPL_TOPIC(client->getNickname(), name, chan->getTopic()));
+    reply(client, RPL_NAMREPLY(client->getNickname(), "=", name) + chan->listUsers());
     reply(client, RPL_ENDOFNAMES(client->getNickname(), name));
 }
 
@@ -195,9 +199,15 @@ void Server::removeFromChannel(Client *client, std::string name, const std::stri
         sendError(client, ERR_NOSUCHCHANNEL, name);
         return ;
     }
-    std::string message = "PART " + name + " :" + msg;
-    _channels[name]->broadcast(client, message);
-    _channels[name]->removeClient(client);
+    _channels[name]->removeClient(client, msg);
+}
+
+void Server::removeFromAll(Client *client)
+{
+    for (chan_iterator it = _channels.begin(); it != _channels.end(); it++)
+    {
+        it->second->removeClient(client, "");
+    }
 }
 
 void Server::messageChannel(Client *client, std::string name, const std::string &msg)
@@ -208,5 +218,5 @@ void Server::messageChannel(Client *client, std::string name, const std::string 
         return ;
     }
     std::string message = "PRIVMSG " + name + " :" + msg;
-    _channels[name]->broadcast(client, message);
+    _channels[name]->broadcast(client, message, client->getSocket());
 }
