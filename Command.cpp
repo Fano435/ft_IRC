@@ -53,6 +53,25 @@ bool isValidNickname(const std::string& nick) {
     return true;
 }
 
+std::vector<std::string> split(const std::string& input, char delimiter) {
+    std::vector<std::string> result;
+    std::string::size_type start = 0;
+    std::string::size_type end;
+
+    while ((end = input.find(delimiter, start)) != std::string::npos) {
+        if (end > start) {
+            result.push_back(input.substr(start, end - start));
+        }
+        start = end + 1;
+    }
+
+    if (start < input.size()) {
+        result.push_back(input.substr(start));
+    }
+
+    return result;
+}
+
 void Command::leave(Client* client, const std::vector<std::string>& args)
 {
     if (args.empty())
@@ -60,21 +79,37 @@ void Command::leave(Client* client, const std::vector<std::string>& args)
         sendError(client, ERR_NEEDMOREPARAMS, "PART");
         return ;
     }
-    std::string channel = args[0];
-    if (args.size() < 2)
+    std::string reason;
+    if (args.size() == 2)
+        reason = args[1];
+    std::vector<std::string> channels = split(args[0], ',');
+
+    for (std::vector<std::string>::iterator it = channels.begin(); it < channels.end(); it++)
     {
-        _server.removeFromChannel(client, channel, "");
+        if ((*it)[0] != '#')
+            continue;
+        _server.removeFromChannel(client, *it, reason);
     }
-    else
-        _server.removeFromChannel(client, channel, args[1]);
 }
+
 
 void Command::join(Client* client, const std::vector<std::string>& args)
 {
-    std::string channel_name = args[0];
-    if (channel_name[0] != '#')
+    std::string param = args[0];
+    if (param == "0")
+    {
+        _server.removeFromAll(client);
         return ;
-    _server.addToChannel(client, channel_name);
+    }
+
+    std::vector<std::string> channels = split(args[0], ',');
+    
+    for (std::vector<std::string>::iterator it = channels.begin(); it < channels.end(); it++)
+    {
+        if ((*it)[0] != '#')
+            continue;
+        _server.addToChannel(client, *it);
+    }
 }
 
 void Command::message(Client* client, const std::vector<std::string>& args)

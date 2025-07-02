@@ -42,19 +42,28 @@ std::string Client::getNickname() const
     return _nickname;
 }
 
-std::string Client::getHost() const
+void Client::append_buf(const std::string& buffer)
 {
-    return _hostname;
+    _buffer += buffer;
 }
 
-std::string Client::getUsername() const
+std::string &Client::getBuffer()
 {
-    return _username;
+    return _buffer;
 }
+// std::string Client::getHost() const
+// {
+//     return _hostname;
+// }
+
+// std::string Client::getUsername() const
+// {
+//     return _username;
+// }
 
 std::string Client::getPrefix() const
 {
-    std::string prefix = ":" + getNickname() + "!" + getUsername() + "@" + getHost();
+    std::string prefix = ":" + getNickname() + "!" + _username + "@" + _hostname;
     return prefix;
 }
 

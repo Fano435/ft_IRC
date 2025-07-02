@@ -20,6 +20,7 @@ class Channel;
 class Server
 {
     typedef void (Server::*CommandHandler)(Client*, const std::vector<std::string>&);
+    typedef std::map<std::string, Channel *>::iterator chan_iterator;
 
 private:
     Server();
@@ -41,6 +42,7 @@ public:
     void addToChannel(Client *client, std::string name);
     void messageChannel(Client *client, std::string name, const std::string &msg);
     void removeFromChannel(Client *client, std::string name, const std::string &msg);
+    void removeFromAll(Client *client);
     void reply(Client *receiver, const std::string& reply);
     Server(const char *s_port, const std::string password);
     ~Server();
