@@ -17,6 +17,7 @@ class Channel
         std::string getTopic() const;
         ~Channel();
         bool client_in_channel(Client* client);
+        bool client_in_channel_str(std::string client_target);
         std::time_t get_topic_time() const;
 
     private:

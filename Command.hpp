@@ -26,6 +26,7 @@ private:
     void leave(Client* client, const std::vector<std::string>& args);
     void disconnect(Client *client, const std::string& reason);
     void topic(Client* client, const std::vector<std::string>& args);
+    void invite(Client* client, const std::vector<std::string>& args);
 
 public:
     Command(Server &server);

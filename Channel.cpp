@@ -86,3 +86,13 @@ bool Channel::client_in_channel(Client* client)
     }
     return false;
 }
+
+bool Channel::client_in_channel_str(std::string client_target)
+{
+    for (std::map<int, Client *>::iterator it = _clients.begin(); it != _clients.end(); ++it)
+    {
+        if (it->second && it->second->getNickname() == client_target)
+            return true;
+    }
+    return false;
+}
