@@ -17,6 +17,7 @@ Command::Command(Server &server) : _server(server)
     _commands["PRIVMSG"] = &Command::message;
     _commands["JOIN"] = &Command::join;
     _commands["PART"] = &Command::leave;
+    _commands["TOPIC"] = &Command::topic;
 }
 
 Command::~Command()
@@ -280,3 +281,49 @@ void Command::execute(Client *client, const std::string &line)
     }
 }
 
+void Command::topic(Client* client, const std::vector<std::string>& args)
+{
+
+    /* to do :
+    Clients joining the channel in the future will receive a RPL_TOPIC numeric (or lack thereof) accordingly.
+    
+    les perm / mode ERR
+
+    [#vovo] /topic ytr  (ca change le topic. c est sense marcher ?)
+    */
+
+    std::string channel_name = args[0];
+    if (channel_name[0] != '#') {
+        sendError(client, ERR_NOSUCHCHANNEL, channel_name);
+        return;
+    }
+
+
+    std::map<std::string, Channel *>::iterator it = _server.getChannels().find(channel_name);
+    if (it == _server.getChannels().end()) { // le channel existe ou pas ?
+        sendError(client, ERR_NOSUCHCHANNEL, channel_name);
+        return;
+    }
+    Channel* channel = it->second;
+
+    if (!channel->client_in_channel(client)) // si le client est pas dans le channel 
+    {
+        sendError(client, ERR_NOTONCHANNEL,channel_name);
+        return ;
+    }
+
+    // Si pas de topic donné, renvoyer le topic actuel
+    if (args.size() == 1 ) {
+        _server.reply(client, RPL_TOPIC(client->getNickname(), channel_name, channel->getTopic()));
+        std::ostringstream oss;
+        oss << channel->get_topic_time();
+        _server.reply(client, RPL_TOPICWHOTIME(client->getNickname(), channel_name, client->getNickname(), oss.str()));
+        return;
+    }
+
+
+    
+    std::string new_topic = args[1];
+    channel->setTopic(new_topic);
+    channel->broadcast(client, "TOPIC " + channel_name + " :" + new_topic);
+}

@@ -220,3 +220,8 @@ void Server::messageChannel(Client *client, std::string name, const std::string 
     std::string message = "PRIVMSG " + name + " :" + msg;
     _channels[name]->broadcast(client, message, client->getSocket());
 }
+
+std::map<std::string, Channel *>& Server::getChannels()
+{
+    return _channels;
+}

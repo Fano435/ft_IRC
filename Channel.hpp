@@ -2,6 +2,8 @@
 #define CHANNEL_HPP
 
 #include "server.h"
+#include <ctime>
+#include <iostream>
 
 class Channel
 {
@@ -14,6 +16,8 @@ class Channel
         void setTopic(const std::string topic);
         std::string getTopic() const;
         ~Channel();
+        bool client_in_channel(Client* client);
+        std::time_t get_topic_time() const;
 
     private:
         Client* _admin;
@@ -23,6 +27,7 @@ class Channel
         size_t _l; //limit of users
         std::string _topic;
         std::string _mode;
+        std::time_t _topic_time;
 
 };
 

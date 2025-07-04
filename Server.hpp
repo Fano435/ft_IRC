@@ -49,6 +49,7 @@ public:
     void run();
     std::map<int, Client *> &getClients();
     const std::string getPassword() const;
+    std::map<std::string, Channel *>& getChannels();
 };
 
 

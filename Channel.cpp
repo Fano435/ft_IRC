@@ -68,7 +68,21 @@ std::string Channel::getTopic() const
     return _topic;
 }
 
+std::time_t Channel::get_topic_time() const
+{
+    return _topic_time;
+}
+
 Channel::~Channel()
 {
 
+}
+bool Channel::client_in_channel(Client* client)
+{
+    for (std::map<int, Client *>::iterator it = _clients.begin(); it != _clients.end(); it++ )
+    {
+        if (it->second == client)
+         return true;
+    }
+    return false;
 }
