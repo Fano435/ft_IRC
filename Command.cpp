@@ -17,6 +17,7 @@ Command::Command(Server &server) : _server(server)
     _commands["PRIVMSG"] = &Command::message;
     _commands["JOIN"] = &Command::join;
     _commands["PART"] = &Command::leave;
+    _commands["MODE"] = &Command::mode;
 }
 
 Command::~Command()
@@ -90,6 +91,11 @@ void Command::leave(Client* client, const std::vector<std::string>& args)
             continue;
         _server.removeFromChannel(client, *it, reason);
     }
+}
+
+void Command::mode(Client* client, const std::vector<std::string>& args)
+{
+    _server.changeMode(client, args);
 }
 
 

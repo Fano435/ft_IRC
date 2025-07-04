@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <sys/socket.h>
+#include <set>
 
 class Client
 {

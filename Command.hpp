@@ -24,6 +24,7 @@ private:
     void message(Client* client, const std::vector<std::string>& args);
     void join(Client* client, const std::vector<std::string>& args);
     void leave(Client* client, const std::vector<std::string>& args);
+    void mode(Client* client, const std::vector<std::string>& args);
     void disconnect(Client *client, const std::string& reason);
 
 public:

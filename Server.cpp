@@ -184,7 +184,7 @@ void Server::addToChannel(Client *client, std::string name)
     if (_channels.find(name) != _channels.end())
         _channels[name]->addClient(client, name);
     else
-        _channels[name] = new Channel(client, name);
+        _channels[name] = new Channel(*this, client, name);
     Channel *chan = _channels[name];
     if (!chan->getTopic().empty())
         reply(client, RPL_TOPIC(client->getNickname(), name, chan->getTopic()));
@@ -200,6 +200,30 @@ void Server::removeFromChannel(Client *client, std::string name, const std::stri
         return ;
     }
     _channels[name]->removeClient(client, msg);
+}
+
+void Server::changeMode(Client *client, const std::vector<std::string>& args)
+{
+    std::string target = args[0];
+
+    if(target[0] == '#')
+    {
+        if (_channels.find(target) == _channels.end())
+        {
+            sendError(client, ERR_NOSUCHCHANNEL, target);
+            return ;
+        }
+        if (args.size() < 2)
+        {
+            reply(client, RPL_CHANNELMODEIS(client->getNickname(), target, _channels[target]->getMode()));
+            return ;
+        }
+        else
+        {
+            _channels[target]->setMode(client, args);
+            return ;
+        }
+    }
 }
 
 void Server::removeFromAll(Client *client)
