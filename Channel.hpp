@@ -4,32 +4,49 @@
 #include "server.h"
 #include <ctime>
 #include <iostream>
+#include <set>
+#include <list>
+
+class Server;
 
 class Channel
 {
     public:
-        Channel(Client* admin, const std::string name);
-        void addClient(Client* client, std::string name );
-        void removeClient(Client* client, const std::string &msg);
+        Channel(Server &server, Client* admin, const std::string name);
+        void add(Client* client);
+        void remove(Client* client, const std::string &msg);
         void broadcast(Client* client, const std::string &message, int exclude_fd = -1 );
         std::string listUsers();
         void setTopic(const std::string topic);
         std::string getTopic() const;
+        std::string getMode() const;
+        bool is_full();
+        bool check_key(const std::string &key);
+        bool has_client(Client *client);
+        bool is_admin(Client *client);
+        void kick(Client *client, const std::vector<std::string>& args);
+        void setMode(Client *client, const std::vector<std::string>& args);
         ~Channel();
         bool client_in_channel(Client* client);
         bool client_in_channel_str(std::string client_target);
         std::time_t get_topic_time() const;
 
     private:
-        Client* _admin;
+        Server &_server;
         std::string _name;
-        std::map<int, Client *> _clients;
+        std::set<Client *> _admins;
+        std::map<std::string, Client *> _clients;
 
-        size_t _l; //limit of users
+        bool _i;        // invitation canal
+        bool _t;        // topic protection
+        std::string _k; // key (password)
+        size_t _l;      // limit of users
+
         std::string _topic;
         std::string _mode;
         std::time_t _topic_time;
 
+        std::set<char> _modes;
 };
 
 #endif

@@ -10,6 +10,15 @@
 #define RPL_TOPICWHOTIME(client, channel, nick, setat)         "333 " + client + " " + channel + " " + nick + " " + setat
 #define RPL_INVITING(client , nick, channel)           "341 " + client + " "  + nick + " " + channel
 #define ERR_USERONCHANNEL(client , nick, channel)         "443 " + client + " "  + nick + " " + channel + " :is already on channel"
+#define RPL_YOUREOPER(client)                   "381 " + client + " :You are now an IRC operator"
+#define RPL_UMODEIS(client, modes)              "221 " + client + " " + modes
+#define RPL_CHANNELMODEIS(client, channel, modes) "324 " + client + " " + channel + " " + modes
+#define ERR_UMODEUNKNOWNFLAG(client, mode)      "501 " + client + " :Unknown " + mode + " flag"
+#define ERR_USERSDONTMATCH(client)              "502 " + client + " :Cant change mode for other users"
+#define ERR_CHANOPIVSNEEDED(client, channel)    "482 " + client + " " + channel + " :You're not channel operator"
+#define ERR_INVALIDKEY(client, channel)         "525 " + client + " " + channel + " :Key is not well-formed"
+#define ERR_BADCHANNELKEY(client, channel)      "475 " + client + " " + channel + " :Cannot join channel (+k)"
+#define ERR_INVITEONLYCHAN(client, channel)     "473 " + client + " " + channel + " :Cannot join channel (+i)"
 
 // #define ERR_NOSUCHNICK(source, nickname)                "401 " + source + " " + nickname + " :No such nick/channel"
 

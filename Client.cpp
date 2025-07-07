@@ -51,15 +51,7 @@ std::string &Client::getBuffer()
 {
     return _buffer;
 }
-// std::string Client::getHost() const
-// {
-//     return _hostname;
-// }
 
-// std::string Client::getUsername() const
-// {
-//     return _username;
-// }
 
 std::string Client::getPrefix() const
 {

@@ -51,7 +51,6 @@ const std::string Server::getPassword() const
     return _password;
 }
 
-
 int Server::createSocket() const
 {
     struct sockaddr_in server_addr;
@@ -179,34 +178,41 @@ void Server::reply(Client *receiver, const std::string& reply)
     send(receiver->getSocket(), msg.c_str(), msg.length(), 0);
 }
 
-void Server::addToChannel(Client *client, std::string name)
+Channel *Server::getChannel(const std::string &channel_name)
 {
-    if (_channels.find(name) != _channels.end())
-        _channels[name]->addClient(client, name);
-    else
-        _channels[name] = new Channel(client, name);
-    Channel *chan = _channels[name];
-    if (!chan->getTopic().empty())
-        reply(client, RPL_TOPIC(client->getNickname(), name, chan->getTopic()));
-    reply(client, RPL_NAMREPLY(client->getNickname(), "=", name) + chan->listUsers());
-    reply(client, RPL_ENDOFNAMES(client->getNickname(), name));
+    if (_channels.find(channel_name) != _channels.end())
+        return _channels[channel_name];
+    return NULL;
 }
 
-void Server::removeFromChannel(Client *client, std::string name, const std::string &msg)
+void Server::addToChannel(Client *client, std::string name)
 {
-    if (_channels.find(name) == _channels.end())
+    Channel *channel = getChannel(name);
+    if (!channel)
     {
-        sendError(client, ERR_NOSUCHCHANNEL, name);
-        return ;
+        _channels[name] = new Channel(*this, client, name);
+        channel = _channels[name];
     }
-    _channels[name]->removeClient(client, msg);
+    else
+    {
+        if (channel->is_full())
+        {
+            sendError(client, ERR_CHANNELISFULL, name);
+            return ;
+        }
+        channel->add(client);
+    }
+    if (!channel->getTopic().empty())
+        reply(client, RPL_TOPIC(client->getNickname(), name, channel->getTopic()));
+    reply(client, RPL_NAMREPLY(client->getNickname(), "=", name) + channel->listUsers());
+    reply(client, RPL_ENDOFNAMES(client->getNickname(), name));
 }
 
 void Server::removeFromAll(Client *client)
 {
     for (chan_iterator it = _channels.begin(); it != _channels.end(); it++)
     {
-        it->second->removeClient(client, "");
+        it->second->remove(client, "");
     }
 }
 
