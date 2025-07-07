@@ -51,7 +51,6 @@ const std::string Server::getPassword() const
     return _password;
 }
 
-
 int Server::createSocket() const
 {
     struct sockaddr_in server_addr;
@@ -179,58 +178,41 @@ void Server::reply(Client *receiver, const std::string& reply)
     send(receiver->getSocket(), msg.c_str(), msg.length(), 0);
 }
 
+Channel *Server::getChannel(const std::string &channel_name)
+{
+    if (_channels.find(channel_name) != _channels.end())
+        return _channels[channel_name];
+    return NULL;
+}
+
 void Server::addToChannel(Client *client, std::string name)
 {
-    if (_channels.find(name) != _channels.end())
-        _channels[name]->addClient(client, name);
-    else
+    Channel *channel = getChannel(name);
+    if (!channel)
+    {
         _channels[name] = new Channel(*this, client, name);
-    Channel *chan = _channels[name];
-    if (!chan->getTopic().empty())
-        reply(client, RPL_TOPIC(client->getNickname(), name, chan->getTopic()));
-    reply(client, RPL_NAMREPLY(client->getNickname(), "=", name) + chan->listUsers());
+        channel = _channels[name];
+    }
+    else
+    {
+        if (channel->is_full())
+        {
+            sendError(client, ERR_CHANNELISFULL, name);
+            return ;
+        }
+        channel->add(client);
+    }
+    if (!channel->getTopic().empty())
+        reply(client, RPL_TOPIC(client->getNickname(), name, channel->getTopic()));
+    reply(client, RPL_NAMREPLY(client->getNickname(), "=", name) + channel->listUsers());
     reply(client, RPL_ENDOFNAMES(client->getNickname(), name));
-}
-
-void Server::removeFromChannel(Client *client, std::string name, const std::string &msg)
-{
-    if (_channels.find(name) == _channels.end())
-    {
-        sendError(client, ERR_NOSUCHCHANNEL, name);
-        return ;
-    }
-    _channels[name]->removeClient(client, msg);
-}
-
-void Server::changeMode(Client *client, const std::vector<std::string>& args)
-{
-    std::string target = args[0];
-
-    if(target[0] == '#')
-    {
-        if (_channels.find(target) == _channels.end())
-        {
-            sendError(client, ERR_NOSUCHCHANNEL, target);
-            return ;
-        }
-        if (args.size() < 2)
-        {
-            reply(client, RPL_CHANNELMODEIS(client->getNickname(), target, _channels[target]->getMode()));
-            return ;
-        }
-        else
-        {
-            _channels[target]->setMode(client, args);
-            return ;
-        }
-    }
 }
 
 void Server::removeFromAll(Client *client)
 {
     for (chan_iterator it = _channels.begin(); it != _channels.end(); it++)
     {
-        it->second->removeClient(client, "");
+        it->second->remove(client, "");
     }
 }
 

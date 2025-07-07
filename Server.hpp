@@ -43,16 +43,14 @@ class Server
 	void addToChannel(Client *client, std::string name);
 	void messageChannel(Client *client, std::string name,
 		const std::string &msg);
-	void removeFromChannel(Client *client, std::string name,
-		const std::string &msg);
 	void removeFromAll(Client *client);
-	void changeMode(Client *client, const std::vector<std::string> &args);
 	void reply(Client *receiver, const std::string &reply);
 	Server(const char *s_port, const std::string password);
 	~Server();
 	void run();
 	std::map<int, Client *> &getClients();
 	const std::string getPassword() const;
+	Channel *getChannel(const std::string &channel_name);
 };
 
 #endif

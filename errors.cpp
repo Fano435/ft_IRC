@@ -24,6 +24,8 @@ void initErrors()
     errors[ERR_NOSUCHCHANNEL] = "No such channel";
     errors[ERR_NOTEXTTOSEND] = "No text to send";
     errors[ERR_NOTONCHANNEL] = "You're not on that channel";
+    errors[ERR_CHANNELISFULL] = "Cannot join channel (+l)";
+    errors[ERR_USERNOTINCHANNEL] = "They aren't on that channel";
 }
 
 void sendError(Client* client, int code, const std::string& param) 

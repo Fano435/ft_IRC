@@ -8,72 +8,22 @@
 
 Command::Command(Server &server) : _server(server)
 {
-    _commands["CAP"] = &Command::cap;
+    _commands["CAP"] = &Command::ignore;
     _commands["PASS"] = &Command::handlePass;
     _commands["NICK"] = &Command::handleNick;
     _commands["USER"] = &Command::handleUser;
     _commands["QUIT"] = &Command::quit;
     _commands["PING"] = &Command::ping;
-    _commands["PRIVMSG"] = &Command::message;
+    _commands["PRIVMSG"] = &Command::handleMessage;
+    _commands["NOTICE"] = &Command::handleNotice;
     _commands["JOIN"] = &Command::join;
-    _commands["PART"] = &Command::leave;
-    _commands["MODE"] = &Command::mode;
+    _commands["PART"] = &Command::part;
+    _commands["MODE"] = &Command::handleMode;
+    _commands["KICK"] = &Command::handleKick;
+    _commands["WHO"] = &Command::ignore;
 }
 
-Command::~Command()
-{
-
-}
-
-bool isValidNickname(const std::string& nick) {
-    if (nick.empty())
-        return false;
-
-    char first = nick[0];
-
-    if (first == ':' || first == '#' || std::isdigit(first))
-        return false;
-
-    for (size_t i = 0; i < nick.length(); ++i) {
-        char c = nick[i];
-
-        if (std::isalnum(c))
-            continue;
-
-        if (c == '[' || c == ']' ||
-            c == '{' || c == '}' ||
-            c == '\\' || c == '|')
-            continue;
-
-        if (std::isspace(c))
-            return false;
-
-        return false;
-    }
-
-    return true;
-}
-
-std::vector<std::string> split(const std::string& input, char delimiter) {
-    std::vector<std::string> result;
-    std::string::size_type start = 0;
-    std::string::size_type end;
-
-    while ((end = input.find(delimiter, start)) != std::string::npos) {
-        if (end > start) {
-            result.push_back(input.substr(start, end - start));
-        }
-        start = end + 1;
-    }
-
-    if (start < input.size()) {
-        result.push_back(input.substr(start));
-    }
-
-    return result;
-}
-
-void Command::leave(Client* client, const std::vector<std::string>& args)
+void Command::part(Client* client, const std::vector<std::string>& args)
 {
     if (args.empty())
     {
@@ -89,19 +39,58 @@ void Command::leave(Client* client, const std::vector<std::string>& args)
     {
         if ((*it)[0] != '#')
             continue;
-        _server.removeFromChannel(client, *it, reason);
+        Channel *channel = _server.getChannel(*it);
+        if (!channel)
+        {
+            sendError(client, ERR_NOSUCHCHANNEL, *it);
+            return ;
+        }
+        channel->remove(client, reason);
     }
 }
 
-void Command::mode(Client* client, const std::vector<std::string>& args)
+void Command::handleKick(Client* client, const std::vector<std::string>& args)
 {
-    _server.changeMode(client, args);
+    if (args.size() < 2)
+    {
+        sendError(client, ERR_NEEDMOREPARAMS, "KICK");
+        return ;
+    }
+
+    Channel *channel = _server.getChannel(args[0]);
+    if (!channel)
+    {
+        sendError(client, ERR_NOSUCHCHANNEL, args[0]);
+        return ;
+    }
+    channel->kick(client, args);
 }
 
+void Command::handleMode(Client* client, const std::vector<std::string>& args)
+{
+    std::string target = args[0];
+
+    if(target[0] != '#')
+        return ;
+    Channel *channel = _server.getChannel(target);
+    if (!channel)
+    {
+        sendError(client, ERR_NOSUCHCHANNEL, target);
+        return ;
+    }
+    if (args.size() < 2)
+    {
+        _server.reply(client, RPL_CHANNELMODEIS(client->getNickname(), target, channel->getMode()));
+        return ;
+    }
+    else
+        channel->setMode(client, args);
+}
 
 void Command::join(Client* client, const std::vector<std::string>& args)
 {
     std::string param = args[0];
+    std::vector<std::string> keys;
     if (param == "0")
     {
         _server.removeFromAll(client);
@@ -109,16 +98,57 @@ void Command::join(Client* client, const std::vector<std::string>& args)
     }
 
     std::vector<std::string> channels = split(args[0], ',');
-    
-    for (std::vector<std::string>::iterator it = channels.begin(); it < channels.end(); it++)
+    if (args.size() > 1)
+        keys = split(args[1], ',');
+    for (size_t i = 0; i < channels.size(); i++)
     {
-        if ((*it)[0] != '#')
+        if (channels[i][0] != '#')
             continue;
-        _server.addToChannel(client, *it);
+        Channel *channel = _server.getChannel(channels[i]);
+
+        std::string key = (i < keys.size()) ? keys[i] : "";
+        if (channel && !channel->check_key(key))
+        {
+            _server.reply(client, ERR_BADCHANNELKEY(client->getNickname(), channels[i]));
+            return ;
+        }
+        _server.addToChannel(client, channels[i]);
+    }  
+}
+
+void Command::handleNotice(Client* client, const std::vector<std::string>& args)
+{
+    std::string msg = "";
+    if (args.size() >= 2)
+        msg = args[1];
+
+    std::vector<std::string> targets = split(args[0], ',');
+    for (std::vector<std::string>::iterator target = targets.begin(); target < targets.end(); target++)
+    {
+        std::string message = "NOTICE " + *target + " :" + msg + "\r\n";
+        if ((*target)[0] != '#')
+        {
+            for (std::map<int, Client *>::iterator it = _server.getClients().begin(); it != _server.getClients().end(); it++)
+            {
+                if ((*it).second->getNickname() == *target)
+                {
+                    send((*it).first, message.c_str(), message.length(), 0);
+                    return ;
+                }
+            }
+        }
+        else
+        {
+            Channel *channel = _server.getChannel(*target);
+            if (channel && channel->is_admin(client))
+            {
+                channel->broadcast(client, message);
+            }
+        }
     }
 }
 
-void Command::message(Client* client, const std::vector<std::string>& args)
+void Command::handleMessage(Client* client, const std::vector<std::string>& args)
 {
     std::string target = args[0];
     std::string msg = args[1];
@@ -190,7 +220,7 @@ void Command::handleNick(Client* client, const std::vector<std::string>& args)
     client->setNickname(nick);
 }
 
-void Command::cap(Client* client, const std::vector<std::string>& args)
+void Command::ignore(Client* client, const std::vector<std::string>& args)
 {
     (void)client;
     (void)args;
@@ -268,11 +298,6 @@ void Command::execute(Client *client, const std::string &line)
         return ;
     }
 
-    // for(size_t  i = 0; i < args.size(); i++)
-    // {
-    //     std::cout << args[i] << std::endl;
-    // }
-
     std::map<std::string, CommandHandler>::iterator it = _commands.find(cmd);
 
     if (it != _commands.end())
@@ -284,5 +309,10 @@ void Command::execute(Client *client, const std::string &line)
     {
         sendError(client, ERR_UNKNOWNCOMMAND);
     }
+}
+
+Command::~Command()
+{
+
 }
 
