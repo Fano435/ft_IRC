@@ -41,10 +41,6 @@ Server::Server(const char *s_port, const std::string password) : _password(passw
         throw std::runtime_error("Error: epoll_create1");
 
 }
-std::map<int, Client *> &Server::getClients()
-{
-    return _clients;
-}
 
 const std::string Server::getPassword() const
 {
@@ -105,7 +101,6 @@ void Server::parseMsg(int sender_sock)
             buf.erase(0, pos + 2);
             _command->execute(client, line);
         }
-        // std::cout << buffer << std::endl;
     }
 }
 
@@ -129,7 +124,6 @@ void Server::run()
             throw std::runtime_error("Error: epoll_wait");
         for (int n = 0; n < nfds; ++n)
         {
-            // Si premiere connexion, ajout d'un nouveau socket client
             if (events[n].data.fd == _socket)
             {
                 client_sock = accept4(_socket, (struct sockaddr *)&client_addr, &client_addr_len, SOCK_NONBLOCK);
@@ -143,9 +137,7 @@ void Server::run()
             }
             else
             {
-                // std::cout << "Clients before: " << getClients().size() << std::endl;
                 parseMsg(events[n].data.fd);
-                // std::cout << "Clients after: " << getClients().size() << std::endl;
             }
         }
     }
@@ -185,6 +177,16 @@ Channel *Server::getChannel(const std::string &channel_name)
     return NULL;
 }
 
+Client *Server::getClient(const std::string &name)
+{
+    for (std::map<int, Client *>::iterator it = _clients.begin(); it != _clients.end(); ++it) 
+    {
+        if (it->second->getNickname() == name) 
+            return it->second;
+    }
+    return NULL;
+}
+
 void Server::addToChannel(Client *client, std::string name)
 {
     Channel *channel = getChannel(name);
@@ -202,10 +204,7 @@ void Server::addToChannel(Client *client, std::string name)
         }
         channel->add(client);
     }
-    if (!channel->getTopic().empty())
-        reply(client, RPL_TOPIC(client->getNickname(), name, channel->getTopic()));
-    reply(client, RPL_NAMREPLY(client->getNickname(), "=", name) + channel->listUsers());
-    reply(client, RPL_ENDOFNAMES(client->getNickname(), name));
+    
 }
 
 void Server::removeFromAll(Client *client)
@@ -225,9 +224,4 @@ void Server::messageChannel(Client *client, std::string name, const std::string 
     }
     std::string message = "PRIVMSG " + name + " :" + msg;
     _channels[name]->broadcast(client, message, client->getSocket());
-}
-
-std::map<std::string, Channel *>& Server::getChannels()
-{
-    return _channels;
 }

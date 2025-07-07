@@ -1,10 +1,8 @@
 #include "Channel.hpp"
+#include <cstdlib>
 
 Channel::Channel(Server &server, Client* admin, const std::string name) : _server(server), _name(name), _i(false), _t(false)
 {
-    (void)_l;
-    (void)_i;
-    (void)_t;
     _admins.insert(admin);
     add(admin);
 }
@@ -22,12 +20,34 @@ bool Channel::check_key(const std::string &key)
         return (_k == key);
 }
 
-void Channel::add(Client* client, std::string name)
+bool Channel::has_client(Client *client)
 {
-    if (!client)
+    return (_clients.find(client->getNickname()) != _clients.end());
+}
+
+bool Channel::has_client(std::string client_target)
+{
+    return (_clients.find(client_target) != _clients.end());
+}
+
+bool Channel::is_admin(Client *client)
+{
+    return (_admins.find(client) != _admins.end());
+}
+
+void Channel::add(Client* client)
+{
+    if (_i && (_invited.find(client) == _invited.end()))
+    {
+        _server.reply(client, ERR_INVITEONLYCHAN(client->getNickname(), _name));
         return ;
+    }
     _clients[client->getNickname()] = client;
     broadcast(client, "JOIN " + _name);
+    if (!getTopic().empty())
+        _server.reply(client, RPL_TOPIC(client->getNickname(), _name, _topic));
+    _server.reply(client, RPL_NAMREPLY(client->getNickname(), "=", _name) + listUsers());
+    _server.reply(client, RPL_ENDOFNAMES(client->getNickname(), _name));
 }
 
 void Channel::remove(Client* client, const std::string &msg)
@@ -66,29 +86,6 @@ void Channel::kick(Client *client, const std::vector<std::string>& args)
     {
         sendError(client, ERR_USERNOTINCHANNEL, user + " " + _name);
     }
-}
-
-bool Channel::has_client(Client *client)
-{
-    return (_clients.find(client->getNickname()) != _clients.end());
-}
-
-bool Channel::is_admin(Client *client)
-{
-    return (_admins.find(client) != _admins.end());
-}
-
-bool mode_isvalid(char c)
-{
-    static const std::string valid_modes = "itkol";
-    return valid_modes.find(c) != std::string::npos;
-}
-
-bool is_number(const std::string& s)
-{
-    std::string::const_iterator it = s.begin();
-    while (it != s.end() && std::isdigit(*it)) ++it;
-    return !s.empty() && it == s.end();
 }
 
 void Channel::setMode(Client *client, const std::vector<std::string>& args)
@@ -195,7 +192,7 @@ void Channel::setMode(Client *client, const std::vector<std::string>& args)
             }
             broadcast(client, "MODE " + _name + " " + modestring);
         }
-        else if (c == 't')
+        else if (c == 't') // change topic policy
         {
             if (adding)
             {
@@ -254,9 +251,15 @@ void Channel::broadcast(Client* client, const std::string &message, int exclude_
     }
 }
 
-void Channel::setTopic(const std::string topic)
+void Channel::setTopic(Client *client, const std::string topic)
 {
+    if (_t && !is_admin(client))
+    {
+        _server.reply(client, ERR_CHANOPIVSNEEDED(client->getNickname(), _name));
+        return ;
+    }
     _topic = topic;
+    broadcast(client, "TOPIC " + _name + " :" + topic);
 }
 
 std::string Channel::getTopic() const
@@ -269,26 +272,31 @@ std::time_t Channel::get_topic_time() const
     return _topic_time;
 }
 
+void Channel::invite(Client *client, const std::string &target_name)
+{
+    
+    Client* target = _server.getClient(target_name);
+    if (!target) 
+    {
+        sendError(client, ERR_NOSUCHNICK, target_name);
+        return;
+    }
+    if (_i)
+    {
+        if (!is_admin(client))
+        {
+            _server.reply(client, ERR_CHANOPIVSNEEDED(client->getNickname(), _name));
+            return ;
+        }
+        else
+            _invited.insert(target);
+    }
+    std::string invite_msg = client->getPrefix() + " INVITE " + target_name + " " + _name + "\r\n";
+    send(target->getSocket(), invite_msg.c_str(), invite_msg.length(), 0);
+    _server.reply(client, RPL_INVITING(client->getNickname(), target_name, _name ));
+}
+
 Channel::~Channel()
 {
 
-}
-bool Channel::client_in_channel(Client* client)
-{
-    for (std::map<int, Client *>::iterator it = _clients.begin(); it != _clients.end(); it++ )
-    {
-        if (it->second == client)
-         return true;
-    }
-    return false;
-}
-
-bool Channel::client_in_channel_str(std::string client_target)
-{
-    for (std::map<int, Client *>::iterator it = _clients.begin(); it != _clients.end(); ++it)
-    {
-        if (it->second && it->second->getNickname() == client_target)
-            return true;
-    }
-    return false;
 }

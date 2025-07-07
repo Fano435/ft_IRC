@@ -17,23 +17,24 @@ class Channel
         void remove(Client* client, const std::string &msg);
         void broadcast(Client* client, const std::string &message, int exclude_fd = -1 );
         std::string listUsers();
-        void setTopic(const std::string topic);
+        void setTopic(Client *client, const std::string topic);
         std::string getTopic() const;
         std::string getMode() const;
         bool is_full();
         bool check_key(const std::string &key);
         bool has_client(Client *client);
+        bool has_client(std::string client);
         bool is_admin(Client *client);
+        void invite(Client *client, const std::string &target);
         void kick(Client *client, const std::vector<std::string>& args);
         void setMode(Client *client, const std::vector<std::string>& args);
         ~Channel();
-        bool client_in_channel(Client* client);
-        bool client_in_channel_str(std::string client_target);
         std::time_t get_topic_time() const;
 
     private:
         Server &_server;
         std::string _name;
+        std::set<Client *> _invited;
         std::set<Client *> _admins;
         std::map<std::string, Client *> _clients;
 

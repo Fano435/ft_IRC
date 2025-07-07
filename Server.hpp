@@ -48,10 +48,9 @@ class Server
 	Server(const char *s_port, const std::string password);
 	~Server();
 	void run();
-	std::map<int, Client *> &getClients();
 	const std::string getPassword() const;
 	Channel *getChannel(const std::string &channel_name);
-	std::map<std::string, Channel *>& getChannels();
+	Client *getClient(const std::string &name);
 };
 
 #endif

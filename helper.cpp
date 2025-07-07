@@ -47,3 +47,16 @@ bool isValidNickname(const std::string& nick) {
 
     return true;
 }
+
+bool mode_isvalid(char c)
+{
+    static const std::string valid_modes = "itkol";
+    return valid_modes.find(c) != std::string::npos;
+}
+
+bool is_number(const std::string& s)
+{
+    std::string::const_iterator it = s.begin();
+    while (it != s.end() && std::isdigit(*it)) ++it;
+    return !s.empty() && it == s.end();
+}
