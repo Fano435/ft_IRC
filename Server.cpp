@@ -14,12 +14,21 @@
 #include <utility>
 #include <sstream>
 #include <iomanip>
+#include <csignal>
 
 Server::~Server()
 {
-    for (std::map<int, Client *>::iterator it = _clients.begin(); it != _clients.end(); it++)
+    for (client_iterator it = _clients.begin(); it != _clients.end(); it++)
     {
-        delete (*it).second;
+        delete it->second;
+    }
+    for (chan_iterator it = _channels.begin(); it != _channels.end(); it++)
+    {
+        delete it->second;
+    }
+    if (_command)
+    {
+        delete _command;
     }
 }
 
@@ -104,6 +113,13 @@ void Server::parseMsg(int sender_sock)
     }
 }
 
+volatile sig_atomic_t _running = 1;
+
+void handle_sigint(int)
+{
+    _running = 0;
+}
+
 void Server::run()
 {
     _command = new Command(*this);
@@ -117,7 +133,8 @@ void Server::run()
     if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, _socket, &ev) == -1 )
         throw std::runtime_error("Error: epoll_ctl: server_sock");
 
-    while(1)
+    std::signal(SIGINT, handle_sigint);
+    while(_running)
     {
         nfds = epoll_wait(epoll_fd, events, MAX_EVENTS, -1);
         if (nfds == -1)
@@ -145,20 +162,17 @@ void Server::run()
 
 void Server::disconnect(Client* client, const std::string& reason)
 {
+    if (!client)
+        return;
     if(!reason.empty())
     {
         std::string msg = "ERROR :" + reason + "\r\n";
         send(client->getSocket(), msg.c_str(), msg.length(), 0);
     }
 
+    removeFromAll(client);
     epoll_ctl(epoll_fd, EPOLL_CTL_DEL, client->getSocket(), 0);
     close(client->getSocket());
-
-    std::map<int, Client*>::iterator it = _clients.find(client->getSocket());
-    if (it != _clients.end()) {
-        delete it->second;
-        _clients.erase(it);
-    }
 }
 
 void Server::reply(Client *receiver, const std::string& reply)
@@ -211,7 +225,8 @@ void Server::removeFromAll(Client *client)
 {
     for (chan_iterator it = _channels.begin(); it != _channels.end(); it++)
     {
-        it->second->remove(client, "");
+        if (it->second->has_client(client))
+            it->second->remove(client, "");
     }
 }
 

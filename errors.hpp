@@ -24,5 +24,4 @@ extern std::map<int, std::string> errors;
 #define ERR_CHANNELISFULL     471
 
 
-
 #endif

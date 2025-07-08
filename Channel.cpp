@@ -1,7 +1,7 @@
 #include "Channel.hpp"
 #include <cstdlib>
 
-Channel::Channel(Server &server, Client* admin, const std::string name) : _server(server), _name(name), _i(false), _t(false)
+Channel::Channel(Server &server, Client* admin, const std::string name) : _server(server), _name(name), _i(false), _t(false), _l(false)
 {
     _admins.insert(admin);
     add(admin);
@@ -129,10 +129,10 @@ void Channel::setMode(Client *client, const std::vector<std::string>& args)
                     _admins.insert(_clients[nick]);
                 else
                     _admins.erase(_clients[nick]);
-                broadcast(client, "MODE " + _name + " " + modestring + " " + nick);
+                broadcast(client, "MODE " + _name + " " + modestring[0] + " " + nick);
             }
             else
-                sendError(client, ERR_USERNOTINCHANNEL, nick + " " + _name);
+                sendError(client, ERR_USERNOTINCHANNEL, nick + "o " + _name);
             return;
         }
         else if (c == 'l') // change user limit
@@ -152,7 +152,7 @@ void Channel::setMode(Client *client, const std::vector<std::string>& args)
                 _l = 0;
                 _modes.erase('l');
             }
-            broadcast(client, "MODE " + _name + " " + modestring + " " + args[2]);
+            broadcast(client, "MODE " + _name + " " + modestring[0] + "l " + args[2]);
         }
         else if (c == 'k') // change key
         {
@@ -176,7 +176,7 @@ void Channel::setMode(Client *client, const std::vector<std::string>& args)
                 _k.clear();
                 _modes.erase('k');
             }
-            broadcast(client, "MODE " + _name + " " + modestring + " " + args[2]);
+            broadcast(client, "MODE " + _name + " " + modestring[0] + "k " + args[2]);
         }
         else if (c == 'i') // change invitation only
         {
@@ -190,7 +190,7 @@ void Channel::setMode(Client *client, const std::vector<std::string>& args)
                 _i = false;
                 _modes.erase('i');
             }
-            broadcast(client, "MODE " + _name + " " + modestring);
+            broadcast(client, "MODE " + _name + " " + modestring[0] + "i");
         }
         else if (c == 't') // change topic policy
         {
@@ -204,7 +204,7 @@ void Channel::setMode(Client *client, const std::vector<std::string>& args)
                 _t = false;
                 _modes.erase('t');
             }
-            broadcast(client, "MODE " + _name + " " + modestring);
+            broadcast(client, "MODE " + _name + " " + modestring[0] + "t");
         }
     }
 }
