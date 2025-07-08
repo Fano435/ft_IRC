@@ -7,7 +7,7 @@
 
 class Client
 {
-private:
+public:
     int _socket;
     std::string _username;
     std::string _nickname;

@@ -132,7 +132,7 @@ void Server::run()
     ev.data.fd = _socket;
     if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, _socket, &ev) == -1 )
         throw std::runtime_error("Error: epoll_ctl: server_sock");
-
+    
     std::signal(SIGINT, handle_sigint);
     while(_running)
     {
