@@ -7,7 +7,7 @@
 
 class Client
 {
-public:
+private:
     int _socket;
     std::string _username;
     std::string _nickname;
@@ -16,10 +16,11 @@ public:
 
     bool _authenticated;
     bool _registered;
+
     int createSocket(const int server_sock) const;
-
+    
     std::string _buffer;
-
+    
 public:
     Client();
     Client(const int sock, struct sockaddr_in &addr, socklen_t addr_len);
@@ -33,7 +34,7 @@ public:
     void setUsername(const std::string &name);
     bool isAuthenticated() const;
     void authenticate(const bool status);
-    void welcome();
+    void tryRegister();
     bool isRegistered() const;
     void write(const std::string& message);
     void reply(const std::string& reply);

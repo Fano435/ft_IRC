@@ -42,10 +42,14 @@ bool Channel::is_admin(Client *client)
 
 void Channel::add(Client* client)
 {
-    if (_i && (_invited.find(client) == _invited.end()))
+    if (_i)
     {
-        _server.reply(client, ERR_INVITEONLYCHAN(client->getNickname(), _name));
-        return ;
+        if (_invited.find(client) == _invited.end())
+        {
+            _server.reply(client, ERR_INVITEONLYCHAN(client->getNickname(), _name));
+            return ;
+        }
+        _invited.erase(client);
     }
     _clients[client->getSocket()] = client;
     broadcast(client, "JOIN " + _name);

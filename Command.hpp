@@ -33,7 +33,7 @@ private:
 
 public:
     Command(Server &server);
-    void execute(Client *client, const std::string &line);
+    bool execute(Client *client, const std::string &line);
     ~Command();
 };
 

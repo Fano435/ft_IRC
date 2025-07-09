@@ -26,6 +26,7 @@ void initErrors()
     errors[ERR_NOTONCHANNEL] = "You're not on that channel";
     errors[ERR_CHANNELISFULL] = "Cannot join channel (+l)";
     errors[ERR_USERNOTINCHANNEL] = "They aren't on that channel";
+    errors[ERR_NOTREGISTERED] = "You have not registered";
 }
 
 void sendError(Client* client, int code, const std::string& param) 

@@ -79,10 +79,13 @@ bool Client::isRegistered() const
     return _registered;
 }
 
-void Client::welcome() 
+void Client::tryRegister() 
 {
-    _registered = true;
-    reply(RPL_WELCOME(_nickname));
+    if(_nickname != "*" && _username != "*")
+    {
+        _registered = true;
+        reply(RPL_WELCOME(_nickname));
+    }
 }
 
 

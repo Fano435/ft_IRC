@@ -21,6 +21,7 @@ Server::~Server()
 {
     for (client_iterator it = _clients.begin(); it != _clients.end(); it++)
     {
+        close(it->first);
         delete it->second;
     }
     for (chan_iterator it = _channels.begin(); it != _channels.end(); it++)
@@ -31,6 +32,8 @@ Server::~Server()
     {
         delete _command;
     }
+    close(_socket);
+    close(epoll_fd);
 }
 
 Server::Server(const char *s_port, const std::string password) : _password(password), _server(SERVER)
@@ -98,6 +101,7 @@ void Server::parseMsg(int sender_sock)
             throw std::runtime_error("[Server] Error: recv");
         std::cout << "Client socket " << sender_sock << " closed" << std::endl;
         disconnect(client, "");
+        return ;
     }
     else
     {
@@ -109,16 +113,17 @@ void Server::parseMsg(int sender_sock)
             std::string line = buf.substr(0, pos);
             std::cout << line << std::endl;
             buf.erase(0, pos + 2);
-            _command->execute(client, line);
+            if (!_command->execute(client, line))
+                break ;
         }
     }
 }
 
-volatile sig_atomic_t _running = 1;
+volatile sig_atomic_t running = 1;
 
 void handle_sigint(int)
 {
-    _running = 0;
+    running = 0;
 }
 
 void Server::run()
@@ -135,7 +140,7 @@ void Server::run()
         throw std::runtime_error("Error: epoll_ctl: server_sock");
     
     std::signal(SIGINT, handle_sigint);
-    while(_running)
+    while(running)
     {
         nfds = epoll_wait(epoll_fd, events, MAX_EVENTS, -1);
         if (nfds == -1)
@@ -174,6 +179,12 @@ void Server::disconnect(Client* client, const std::string& reason)
     removeFromAll(client);
     epoll_ctl(epoll_fd, EPOLL_CTL_DEL, client->getSocket(), 0);
     close(client->getSocket());
+    std::map<int, Client*>::iterator it = _clients.find(client->getSocket());
+    if (it != _clients.end()) {
+        delete it->second;
+        _clients.erase(it);
+    }
+    client = NULL;
 }
 
 void Server::reply(Client *receiver, const std::string& reply)

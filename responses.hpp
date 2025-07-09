@@ -20,6 +20,4 @@
 #define ERR_BADCHANNELKEY(client, channel)      "475 " + client + " " + channel + " :Cannot join channel (+k)"
 #define ERR_INVITEONLYCHAN(client, channel)     "473 " + client + " " + channel + " :Cannot join channel (+i)"
 
-// #define ERR_NOSUCHNICK(source, nickname)                "401 " + source + " " + nickname + " :No such nick/channel"
-
 #endif

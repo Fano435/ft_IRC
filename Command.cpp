@@ -154,7 +154,6 @@ void Command::handleNotice(Client* client, const std::vector<std::string>& args)
 
 void Command::handleMessage(Client* client, const std::vector<std::string>& args)
 {
-    std::string target = args[0];
     std::string msg = args[1];
 
     if (args.empty())
@@ -167,19 +166,24 @@ void Command::handleMessage(Client* client, const std::vector<std::string>& args
         sendError(client, ERR_NOTEXTTOSEND);
         return ;
     }
-    if (target[0] == '#')
+    std::vector<std::string> targets = split(args[0], ',');
+    for (std::vector<std::string>::iterator target = targets.begin(); target < targets.end(); target++)
     {
-        _server.messageChannel(client, target, msg);
-        return ;
+        std::string message = client->getPrefix() + " PRIVMSG " + *target + " :" + msg + "\r\n";
+        if ((*target)[0] == '#')
+        {
+            _server.messageChannel(client, *target, msg);
+            continue ;
+        }
+        
+        Client *receiver = _server.getClient(*target);
+        if (!receiver)
+        {
+            sendError(client, ERR_NOSUCHNICK, *target);
+            continue ;
+        }
+        send(receiver->getSocket(), message.c_str(), message.length(), 0);
     }
-    std::string message = client->getPrefix() + " PRIVMSG " + target + " :" + msg + "\r\n";
-    Client *receiver = _server.getClient(target);
-    if (!receiver)
-    {
-        sendError(client, ERR_NOSUCHNICK, target);
-        return ;
-    }
-    send(receiver->getSocket(), message.c_str(), message.length(), 0);
 }
 
 void Command::quit(Client* client, const std::vector<std::string>& args)
@@ -226,6 +230,7 @@ void Command::handleNick(Client* client, const std::vector<std::string>& args)
         _server.replyToAll(client, message);
     }
     client->setNickname(nick);
+    client->tryRegister();
 }
 
 void Command::ignore(Client* client, const std::vector<std::string>& args)
@@ -254,7 +259,7 @@ void Command::handleUser(Client* client, const std::vector<std::string>& args)
         return ;
     }
     client->setUsername(args[0]);
-    client->welcome();
+    client->tryRegister();
 }
 
 void Command::handlePass(Client* client, const std::vector<std::string>& args)
@@ -270,20 +275,21 @@ void Command::handlePass(Client* client, const std::vector<std::string>& args)
     if (args.back() != _server.getPassword())
     {
         sendError(client, ERR_PASSWDMISMATCH);
+        _server.disconnect(client, "Password incorrect");
         return ;
     }
     client->authenticate(true);
     return ;
 }
 
-void Command::execute(Client *client, const std::string &line)
+bool Command::execute(Client *client, const std::string &line)
 {
     std::istringstream stream(line);
     std::string cmd, token;
     std::vector<std::string> args;
 
     if (!client)
-        return ;
+        return false;
     stream >> cmd;
     while (stream >> token)
     {
@@ -302,20 +308,33 @@ void Command::execute(Client *client, const std::string &line)
     if (args.empty())
     {
         sendError(client, ERR_NEEDMOREPARAMS);
-        return ;
+        return true;
     }
 
     std::map<std::string, CommandHandler>::iterator it = _commands.find(cmd);
 
     if (it != _commands.end())
     {
+        if (!client->isRegistered() &&
+            cmd != "PASS" &&
+            cmd != "NICK" &&
+            cmd != "USER" &&
+            cmd != "PING" &&
+            cmd != "ERROR") 
+        {
+            sendError(client, ERR_NOTREGISTERED);
+            return true;
+        }
+        
         CommandHandler handler = it->second;
         (this->*handler)(client, args);
+
+        if (cmd == "QUIT")
+            return false;
     }
     else
-    {
         sendError(client, ERR_UNKNOWNCOMMAND);
-    }
+    return true;
 }
 
 void Command::topic(Client* client, const std::vector<std::string>& args)

@@ -18,6 +18,7 @@ extern std::map<int, std::string> errors;
 #define ERR_NICKNAMEINUSE     433
 #define ERR_USERNOTINCHANNEL  441
 #define ERR_NOTONCHANNEL      442
+#define ERR_NOTREGISTERED     451
 #define ERR_NEEDMOREPARAMS    461
 #define ERR_ALREADYREGISTRED  462
 #define ERR_PASSWDMISMATCH    464

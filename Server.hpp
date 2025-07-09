@@ -46,7 +46,6 @@ class Server
 		const std::string &msg);
 	void removeFromAll(Client *client);
 	void replyToAll(Client *client, const std::string &msg);
-	std::string generateNick(const std::string& baseNick);
 	void reply(Client *receiver, const std::string &reply);
 	Server(const char *s_port, const std::string password);
 	~Server();
