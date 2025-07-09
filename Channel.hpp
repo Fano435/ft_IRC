@@ -23,7 +23,7 @@ class Channel
         bool is_full();
         bool check_key(const std::string &key);
         bool has_client(Client *client);
-        bool has_client(std::string client);
+        Client *getClient(const std::string &name);
         bool is_admin(Client *client);
         void invite(Client *client, const std::string &target);
         void kick(Client *client, const std::vector<std::string>& args);
@@ -36,7 +36,7 @@ class Channel
         std::string _name;
         std::set<Client *> _invited;
         std::set<Client *> _admins;
-        std::map<std::string, Client *> _clients;
+        std::map<int, Client *> _clients;
 
         bool _i;        // invitation canal
         bool _t;        // topic protection

@@ -32,7 +32,7 @@ public:
     std::string &getBuffer();
     void setUsername(const std::string &name);
     bool isAuthenticated() const;
-    void authenticate();
+    void authenticate(const bool status);
     void welcome();
     bool isRegistered() const;
     void write(const std::string& message);

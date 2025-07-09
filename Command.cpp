@@ -21,6 +21,7 @@ Command::Command(Server &server) : _server(server)
     _commands["MODE"] = &Command::handleMode;
     _commands["KICK"] = &Command::handleKick;
     _commands["WHO"] = &Command::ignore;
+    _commands["WHOIS"] = &Command::ignore;
     _commands["PART"] = &Command::part;
     _commands["TOPIC"] = &Command::topic;
     _commands["INVITE"] = &Command::handleInvite;
@@ -207,12 +208,22 @@ void Command::handleNick(Client* client, const std::vector<std::string>& args)
     if (in_use)
     {
         sendError(client, ERR_NICKNAMEINUSE, nick);
+        if (!client->isRegistered())
+        {
+            client->authenticate(false);
+        }
         return ;
     }
     if(!isValidNickname(nick))
     {
         sendError(client, ERR_ERRONEUSNICKNAME);
+        client->authenticate(false);
         return ;
+    }
+    std::string message = "NICK " + nick;
+    if (client->isRegistered())
+    {
+        _server.replyToAll(client, message);
     }
     client->setNickname(nick);
 }
@@ -261,7 +272,7 @@ void Command::handlePass(Client* client, const std::vector<std::string>& args)
         sendError(client, ERR_PASSWDMISMATCH);
         return ;
     }
-    client->authenticate();
+    client->authenticate(true);
     return ;
 }
 
@@ -353,12 +364,12 @@ void Command::handleInvite(Client* client, const std::vector<std::string>& args)
         sendError(client, ERR_NOSUCHCHANNEL, channel_name);
         return ;
     }
-    if (!channel->has_client(client)) // si le client qui invite est pas dans le channel 
+    if (!channel->has_client(client))
     {
         sendError(client, ERR_NOTONCHANNEL,channel_name);
         return ;
     }
-    if (channel->has_client(nickname_target)) // si le client invite_target est deja dans le channel
+    if (channel->getClient(nickname_target))
     {
         _server.reply(client, ERR_USERONCHANNEL(client->getNickname(), nickname_target,channel_name ) );
         return ;

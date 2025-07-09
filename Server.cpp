@@ -16,6 +16,7 @@
 #include <iomanip>
 #include <csignal>
 
+
 Server::~Server()
 {
     for (client_iterator it = _clients.begin(); it != _clients.end(); it++)
@@ -228,6 +229,16 @@ void Server::removeFromAll(Client *client)
         if (it->second->has_client(client))
             it->second->remove(client, "");
     }
+}
+
+void Server::replyToAll(Client *client, const std::string &msg)
+{
+    for (chan_iterator channel = _channels.begin(); channel != _channels.end(); channel++)
+    {
+        if (channel->second->has_client(client))
+            channel->second->broadcast(client, msg, client->getSocket());
+    }
+    client->reply(msg);
 }
 
 void Server::messageChannel(Client *client, std::string name, const std::string &msg)

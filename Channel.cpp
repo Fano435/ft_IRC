@@ -22,12 +22,17 @@ bool Channel::check_key(const std::string &key)
 
 bool Channel::has_client(Client *client)
 {
-    return (_clients.find(client->getNickname()) != _clients.end());
+    return (_clients.find(client->getSocket()) != _clients.end());
 }
 
-bool Channel::has_client(std::string client_target)
+Client *Channel::getClient(const std::string &name)
 {
-    return (_clients.find(client_target) != _clients.end());
+    for (std::map<int, Client *>::iterator it = _clients.begin(); it != _clients.end(); ++it) 
+    {
+        if (it->second->getNickname() == name) 
+            return it->second;
+    }
+    return NULL;
 }
 
 bool Channel::is_admin(Client *client)
@@ -42,7 +47,7 @@ void Channel::add(Client* client)
         _server.reply(client, ERR_INVITEONLYCHAN(client->getNickname(), _name));
         return ;
     }
-    _clients[client->getNickname()] = client;
+    _clients[client->getSocket()] = client;
     broadcast(client, "JOIN " + _name);
     if (!getTopic().empty())
         _server.reply(client, RPL_TOPIC(client->getNickname(), _name, _topic));
@@ -52,7 +57,7 @@ void Channel::add(Client* client)
 
 void Channel::remove(Client* client, const std::string &msg)
 {
-    std::map<std::string, Client*>::iterator it = _clients.find(client->getNickname());
+    std::map<int, Client*>::iterator it = _clients.find(client->getSocket());
     if (it != _clients.end())
     {
         std::string message = "PART " + _name;
@@ -74,18 +79,16 @@ void Channel::kick(Client *client, const std::vector<std::string>& args)
         _server.reply(client, ERR_CHANOPIVSNEEDED(client->getNickname(), _name));
         return ;
     }
-    std::string user = args[1];
-    std::map<std::string, Client*>::iterator it = _clients.find(user);
-    if (it != _clients.end())
+    std::string username = args[1];
+    Client *user = getClient(username);
+    if (!user)
     {
-        std::string message = "KICK " + _name + " " + user + " :" + args[2];
-        broadcast(client, message);
-        _clients.erase(it);
+        sendError(client, ERR_USERNOTINCHANNEL, username + " " + _name);
+        return;
     }
-    else
-    {
-        sendError(client, ERR_USERNOTINCHANNEL, user + " " + _name);
-    }
+    std::string message = "KICK " + _name + " " + username + " :" + args[2];
+    broadcast(client, message);
+    _clients.erase(user->getSocket());
 }
 
 void Channel::setMode(Client *client, const std::vector<std::string>& args)
@@ -123,13 +126,14 @@ void Channel::setMode(Client *client, const std::vector<std::string>& args)
             if (args.size() < 3)
                 return ;
             std::string nick = args[2];
-            if (_clients.find(nick) != _clients.end())
+            Client *user = getClient(nick);
+            if (user)
             {
                 if (adding)
-                    _admins.insert(_clients[nick]);
+                    _admins.insert(user);
                 else
-                    _admins.erase(_clients[nick]);
-                broadcast(client, "MODE " + _name + " " + modestring[0] + " " + nick);
+                    _admins.erase(user);
+                broadcast(client, "MODE " + _name + " " + modestring + " " + nick);
             }
             else
                 sendError(client, ERR_USERNOTINCHANNEL, nick + "o " + _name);
@@ -146,13 +150,14 @@ void Channel::setMode(Client *client, const std::vector<std::string>& args)
                 }
                 _l = atoi(args[2].c_str());
                 _modes.insert('l');
+                broadcast(client, "MODE " + _name + " " + modestring + " " + args[2]);
             }
             else
             {
                 _l = 0;
                 _modes.erase('l');
+                broadcast(client, "MODE " + _name + " " + modestring);
             }
-            broadcast(client, "MODE " + _name + " " + modestring[0] + "l " + args[2]);
         }
         else if (c == 'k') // change key
         {
@@ -176,7 +181,7 @@ void Channel::setMode(Client *client, const std::vector<std::string>& args)
                 _k.clear();
                 _modes.erase('k');
             }
-            broadcast(client, "MODE " + _name + " " + modestring[0] + "k " + args[2]);
+            broadcast(client, "MODE " + _name + " " + modestring + " " + args[2]);
         }
         else if (c == 'i') // change invitation only
         {
@@ -190,7 +195,7 @@ void Channel::setMode(Client *client, const std::vector<std::string>& args)
                 _i = false;
                 _modes.erase('i');
             }
-            broadcast(client, "MODE " + _name + " " + modestring[0] + "i");
+            broadcast(client, "MODE " + _name + " " + modestring);
         }
         else if (c == 't') // change topic policy
         {
@@ -204,7 +209,7 @@ void Channel::setMode(Client *client, const std::vector<std::string>& args)
                 _t = false;
                 _modes.erase('t');
             }
-            broadcast(client, "MODE " + _name + " " + modestring[0] + "t");
+            broadcast(client, "MODE " + _name + " " + modestring);
         }
     }
 }
@@ -222,7 +227,7 @@ std::string Channel::getMode() const
 std::string Channel::listUsers()
 {
     std::string list;
-    for (std::map<std::string, Client *>::iterator it = _clients.begin(); it != _clients.end(); it++)
+    for (std::map<int, Client *>::iterator it = _clients.begin(); it != _clients.end(); it++)
     {
         Client* user = it->second;
         if (it != _clients.begin())
@@ -231,19 +236,19 @@ std::string Channel::listUsers()
         }
         if (_admins.find(user) != _admins.end())
             list += "@";
-        list += it->first;
+        list += it->second->getNickname();
     }
     return list;
 }
 
 void Channel::broadcast(Client* client, const std::string &message, int exclude_fd)
 {
-    if (_clients.find(client->getNickname()) == _clients.end())
+    if (_clients.find(client->getSocket()) == _clients.end())
     {
         sendError(client, ERR_NOTONCHANNEL, _name);
         return ;
     }
-    for (std::map<std::string, Client *>::iterator it = _clients.begin(); it != _clients.end(); it++)
+    for (std::map<int, Client *>::iterator it = _clients.begin(); it != _clients.end(); it++)
     {
         Client* user = it->second;
         if (user->getSocket() != exclude_fd)

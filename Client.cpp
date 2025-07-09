@@ -69,9 +69,9 @@ bool Client::isAuthenticated() const
     return _authenticated;
 }
 
-void Client::authenticate() 
+void Client::authenticate(const bool status) 
 {
-    _authenticated = true;
+    _authenticated = status;
 }
 
 bool Client::isRegistered() const
